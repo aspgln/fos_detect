@@ -1,7 +1,8 @@
 % read tag number, X, Y
-[filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select excel file');
-file_cat = strcat(pathname,filename);
-[num,txt,raw] = xlsread(file_cat);
+% [filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select excel file');
+% file_cat = strcat(pathname,filename); 
+[num,txt,raw] = xlsread('/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx');
+
 
 import_tags = [];
 for i = 1:size(raw,1)
@@ -41,7 +42,7 @@ end
 
 %%tags-read, centroid-green
 figure;
-imshow(L);
+imshow(I_bw);
 hold on;
 for i = 1:length(import_tags)
     plot(import_tags(i,2), import_tags(i,3),'r*');  % manually tag red
@@ -54,7 +55,7 @@ end
 
 
 % hold on
-% plot(1497,917,'r*')
+% plot(147.1731,810.5705,'r*')
 %%
 figure;
 imshow(BW_patch_reorient(4).image);
