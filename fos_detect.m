@@ -59,14 +59,14 @@ U = imfill(U,'holes');       %Filling in holes
  title('Holes filled')
 
 %%
-% se = strel('disk',1);
-%  BW3 = imopen(BW2,se);
-%   figure;imshow(BW3);
+%  se = strel('disk',1);
+%  BW3 = imopen(U,se);
+%  figure;imshow(BW3);
 %  title('after decimation');
 
 %%
 %  BW4 = imclose(BW3,se);
-%   figure;imshow(BW4);
+%  figure;imshow(BW4);
 %  title('After dilation')
 
 %%
@@ -74,15 +74,18 @@ U = imfill(U,'holes');       %Filling in holes
 %--------------------------------------------------------------------------
 
 [L,n] = bwlabel(U);
+figure;imshow(L); title('L')
+
 Candidate_properties = regionprops(L,'Area', 'Perimeter', 'PixelIdxList');
 
 for i = 1:n
-    if Candidate_properties(i).Area < 75 || Candidate_properties(i).Area > 800
+    if Candidate_properties(i).Area < 50 || Candidate_properties(i).Area > 800
         L(Candidate_properties(i).PixelIdxList) = 0;
     end 
 end
 
 figure;imshow(L); title('L')
+
 
 
 %%
@@ -92,6 +95,8 @@ figure;imshow(L); title('L')
 
 %Recomputing the candidate patches after filtering out for size previously 
 [L2, n] = bwlabel(L);
+figure;imshow(L); title('L2')
+
 Region = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 %%
 %Creating window patches for candidates
@@ -121,10 +126,11 @@ end
 Shape_features = zeros(n,10);
 for i = 1:n-1
    gg = i
+%    figure;imshow(BW_patch(160).image);
     Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size, number);
    
 end
-Shape_features = compute_shape_features(BW_patch_reorient(1).image,patch_size, number);
+% Shape_features = compute_shape_features(BW_patch_reorient(1).image,patch_size, number);
 
 
 %%
@@ -163,8 +169,8 @@ end
 Feature_vector = horzcat(Shape_features, Texture_features, HoG_features);
 num_of_features = size(Feature_vector, 2);
 
-       
-Feature_vector = horzcat(Feature_vector, zeros(n, 1));
+     
+label_vector = zeros(n,1);
 
 
 

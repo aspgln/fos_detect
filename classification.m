@@ -6,7 +6,7 @@
 
 import_tags = [];
 for i = 1:size(raw,1)
-    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colabel'))
+    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colab3el'))
         import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
     end
 end
@@ -42,7 +42,7 @@ end
 
 %%tags-read, centroid-green
 figure;
-imshow(I_bw);
+imshow(L);
 hold on;
 for i = 1:length(import_tags)
     plot(import_tags(i,2), import_tags(i,3),'r*');  % manually tag red
@@ -53,9 +53,9 @@ for i = 1:length(positive_signals_index)
     plot(centroid(positive_signals_index(i),1),  centroid(positive_signals_index(i),2), 'gx');
 end
 
-
-% hold on
-% plot(147.1731,810.5705,'r*')
+centroid(160,1), centroid(160,2)
+hold on
+plot(centroid(160,1), centroid(160,2),'r*')
 %%
 figure;
 imshow(BW_patch_reorient(4).image);
@@ -68,7 +68,7 @@ imshow(BW_patch_reorient(4).image);
 
 for i = 1:num_of_positive_signals
     pos_in_centroid = positive_signals_index(i,1);
-    Feature_vector(pos_in_centroid, num_of_features + 1) = 1;
+    label_vector(pos_in_centroid, 1) = 1;
     figure; 
     imshow(BW_patch_reorient(i).image);
     

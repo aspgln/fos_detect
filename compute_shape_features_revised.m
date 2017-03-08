@@ -11,18 +11,21 @@
 %orientation, equivDiameter, Area, Eccentricity, Convex Area, Major and
 %Minor Axis length, Extent.
 
-function [Features] = compute_shape_features_revised(Binary_image,patch_size,number)
+function [Features] = compute_shape_features_revised(Binary_image, patch_size,number)
+% 
+% Binary_image = BW_patch(160).image;
+% figure; imshow(Binary_image);
 
-%Clear everything touching the border so in theory the only thing that
-%remains is your target at the center of the patch/window
+% BW_patch(2)
 Binary_image = imclearborder(Binary_image);
-% figure;
+% figure;imshow(Binary_image2);
 % imshow(BW_patch_reorient(111).image);
-Binary_image = imclearborder(BW_patch_reorient(2).image);
-figure;
-imshow(Binary_image);
+% Binary_image = imclearborder(BW_patch_reorient(2).image);
+% figure;
+% imshow(Binary_image);
 
-
+B = bwperim(Binary_image,4);
+% figure;imshowpair(Binary_image, B, 'montage')
 Props = regionprops(Binary_image, 'Area');
 Props = regionprops(Binary_image, 'Solidity', 'Perimeter',...
                     'Orientation','EquivDiameter','Area', 'Eccentricity',...
