@@ -11,56 +11,45 @@
 %orientation, equivDiameter, Area, Eccentricity, Convex Area, Major and
 %Minor Axis length, Extent.
 
-function [Features] = compute_shape_features_revised(Binary_image, patch_size,number)
-% 
-% Binary_image = BW_patch(160).image;
-% figure; imshow(Binary_image);
+function [Features] = compute_shape_features_revised(Binary_image, patch_size)
 
-% BW_patch(2)
-Binary_image = imclearborder(Binary_image);
-% figure;imshow(Binary_image2);
-% imshow(BW_patch_reorient(111).image);
-% Binary_image = imclearborder(BW_patch_reorient(2).image);
-% figure;
-% imshow(Binary_image);
 
-B = bwperim(Binary_image,4);
-% figure;imshowpair(Binary_image, B, 'montage')
-Props = regionprops(Binary_image, 'Area');
+
+
+% B = bwperim(Binary_image,4);
 Props = regionprops(Binary_image, 'Solidity', 'Perimeter',...
                     'Orientation','EquivDiameter','Area', 'Eccentricity',...
                     'ConvexArea', 'MajorAxisLength', 'MinorAxisLength',...
                     'Extent');
                 
 
-
-%Find the biggest area from the region props function. Your target should
-%have the largest area. Don't need the area of the noise or background
-if length(Props) ~= 1
-    Areas = regionprops(Binary_image, 'Area');
-    Areas_array = struct2array(Areas);
-    [Sorted_Areas, Sorted_Index] = sort(Areas_array,'descend');
-    Props = Props(Sorted_Index(1));
-end
 % 
-% [Sorted_Area, Sorted_Index] = sort(Props.Area);
-% Area = Sorted_Area(1);%take the largest area
+% %Find the biggest area from the region props function. Your target should
+% %have the largest area. Don't need the area of the noise or background
+% if length(Props) ~= 1
+%     Areas = regionprops(Binary_image, 'Area');
+%     Areas_array = struct2array(Areas);
+%     [Sorted_Areas, Sorted_Index] = sort(Areas_array,'descend');
+%     Props = Props(Sorted_Index(1));
+% end
+% % 
+% % [Sorted_Area, Sorted_Index] = sort(Props.Area);
+% % Area = Sorted_Area(1);%take the largest area
 
 
 %Creating normalized vector of Features
 Features = [];
-for i = 1:number
-    Features = [Features, Props.Solidity,... %ratio no need to normalize
-                Props.Perimeter/(patch_size*4),...%normalize perimeter to perimeter of window
-                (Props.Orientation + 90)/180,... %angle make it between 0-180 instead of -90-90
-                Props.EquivDiameter/(sqrt(patch_size^2/pi)*2),... %Normalize diamter with equivalent circle with area of the patch
-                Props.Area/(patch_size^2),... %normalize with area of the patch
-                Props.Eccentricity,... ratio no need to normalize
-                Props.ConvexArea/(patch_size^2),... %normalize with area of the patch
-                Props.MajorAxisLength/(patch_size*sqrt(2)),... %normalize with max diagonal of the patch
-                Props.MinorAxisLength/(patch_size*sqrt(2)),... %normalize with max diagonal of the patch
-                Props.Extent]; %ratio no need to normalize
-end
+
+Features = [Features, Props.Solidity,... %ratio no need to normalize
+            Props.Perimeter/(patch_size*4),...%normalize perimeter to perimeter of window
+            (Props.Orientation + 90)/180,... %angle make it between 0-180 instead of -90-90
+            Props.EquivDiameter/(sqrt(patch_size^2/pi)*2),... %Normalize diamter with equivalent circle with area of the patch
+            Props.Area/(patch_size^2),... %normalize with area of the patch
+            Props.Eccentricity,... ratio no need to normalize
+            Props.ConvexArea/(patch_size^2),... %normalize with area of the patch
+            Props.MajorAxisLength/(patch_size*sqrt(2)),... %normalize with max diagonal of the patch
+            Props.MinorAxisLength/(patch_size*sqrt(2)),... %normalize with max diagonal of the patch
+            Props.Extent]; %ratio no need to normalize
 end
                 
                 
