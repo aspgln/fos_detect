@@ -49,6 +49,10 @@ end
 % figure;imshow(L)
 
 
+[L2, n] = bwlabel(L);
+figure;imshow(L); title('L2')
+Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
+
 
 %%
 % import tag
@@ -56,49 +60,23 @@ end
 % [filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select tag file');
 % file_cat = strcat(pathname,filename);
 
+
+% raw takes both numeric and text data in cell array
+
+
 file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx';
-% 
-% [num_of_positive_signals,positive_signals_index] = 
-% [num,txt,raw] = xlsread(file_cat);
-% 
-% 
-% import_tags = [];
-% for i = 1:size(raw,1)
-%     if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colabel'))
-%         import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
-%     end
-% end
-% 
-% 
-% %compared centroid and tags in two different colors
-% num_of_positive_signals = length(import_tags);
-% 
-% 
-% 
-% positive_signals_index = [];
-% 
-% % pair tag and signals with minimun euclidean norm
-% 
-% 
-% 
-% all_norms = zeros(num_of_positive_signals, 1);
-% 
-% 
-% for i = 1:length(import_tags)
-%     eu_norm = zeros(length(candidate_centroid),1);
-% 
-%     for j = 1:length(candidate_centroid)
-%         eu_norm(j) = norm(import_tags(i,2:3) -candidate_centroid(j,:));
-%     end
-%     
-%     [min_norm,index] = min(eu_norm);
-%     all_norms(i) =  min_norm;
-%     positive_signals_index = cat(1,positive_signals_index, index);  %index in Candidate_centroid
-% end
+[num,txt,raw] = xlsread(file_cat);
 
 
-[num_of_positive_signals,positive_signals_index] = tag_import(file_cat, candidate_centroid);
+import_tags = [];
+for i = 1:size(raw,1)
+    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colabel'))
+        import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
+    end
+end
 
+% import tags, pair tags with candidates
+[num_of_positive_signals,positive_signals] = match_tags(import_tags, Candidate_properties);
 
 %%tags-read, centroid-green
 figure;
@@ -111,36 +89,83 @@ plot(candidate_centroid(:,1), candidate_centroid(:,2), 'go')
 
 
 %%
-
-%Recomputing the candidate patches after filtering out for size previously 
-[L2, n] = bwlabel(L);
-figure;imshow(L); title('L2')
-
-Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
-
+%Recomputing the candidate patches after filtering out size
 
 patch_size = 80;
 
-for i=18
+for i=1:n
 
     % filter
+    % set pixelidxlist of target candidate to 1, all the other to 0
     Base = zeros(size(L2));
     Base(Candidate_properties(i).PixelIdxList) = 1; 
     
     x = Candidate_properties(i).Centroid(1);
     y = Candidate_properties(i).Centroid(2);
-    BW_patch.image = create_patch(Base,x,y,patch_size);
-%     
-%     
+    BW_patch(i).image = create_patch(Base,x,y,patch_size);
+    Gray_patch(i).image = create_patch(I_equalized, x,y,patch_size);
     
-    figure;imshow(BW_patch.image);
+    %Normalizing the patches and reorienting so that it is vertical
+    [Gray_Patch_normal(i).image, BW_patch_reorient(i).image] = process_reorient(Gray_patch(i).image, BW_patch(i).image);
+
+
+%     figure;imshow(BW_patch.image);
 %     
     
     
 
 end
 %%
+%Start extracting features
+%--------------------------------------------------------------------------
 
-L_Cfos = L;
-% L_Tdt = L;
+%Shape features
+
+
+Shape_features = zeros(n,10);
+for i = 1:n
+   gg = i
+%    figure;imshow(BW_patch(160).image);
+    Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size);
+   
+end
+% Shape_features = compute_shape_features(BW_patch_reorient(1).image,patch_size, number);
+
+%%
+
+%Texture features
+
+num_histogram_bins = 16;
+
+Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
+
+[a,b] = size(Texture_features);
+Texture_features = zeros(n, a*b);
+
+for i = 1:n
+    Texture_matrix = Compute_MR8(Gray_Patch_normal(i).image, num_histogram_bins);
+    Texture_features(i,:) = reshape(Texture_matrix, [1,a*b]);
+end
+
+% Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
+
+
+
+%%
+
+%HoG features 
+%5 parameters: int nb_bins, double cwidth, int block_size, int orient,  double clip_val
+
+HoG_features = HoG(im2double(Gray_Patch_normal(1).image), [9,10,6,1,0.2]);
+HoG_features = zeros(n,length(HoG_features));
+
+for i = 1:n
+    HoG_features(i,:) = HoG(im2double(Gray_Patch_normal(i).image), [9,10,6,1,0.2]);
+end
+
+%HoG_features = HoG(im2double(Gray_Patch_normal(5).image), [9,10,6,1,0.2]);
+
+%%
+% putting together all features vectors
+Feature_vector = horzcat(Shape_features, Texture_features, HoG_features);
 
