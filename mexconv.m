@@ -13,11 +13,11 @@ norm = mat2gray(I);
 % title('after mat2gray before conv')
 
 HH = conv2(norm,mexihat,'same');
-figure;imshow(HH);
-title('after convolution')
+% figure;imshow(HH);
+% title('after convolution')
 
 II = mat2gray(HH);
-figure;imshow(II);
-title('after renormalizing after convolution')
+% figure;imshow(II);
+% title('after renormalizing after convolution')
 
 convolved_image = HH;

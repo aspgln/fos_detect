@@ -15,5 +15,5 @@ shift = size/2;
 a = 1;
 
 mexhat = (a/(pi*sigma^2))*(1 - ((x-shift).^2+(y-shift).^2)/(2*sigma^2)).*exp(-(((x-shift).^2+(y-shift).^2))/(2*sigma^2));
-figure; surf(x,y,mexhat)
+% figure; surf(x,y,mexhat);
 mexican_hat = mexhat;
