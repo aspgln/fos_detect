@@ -1,4 +1,4 @@
-clear all
+% clear all
 close all
 clc
 
@@ -6,7 +6,7 @@ clc
 %pick out candidate areas that are fos positive. 
 
 %Choosing image file 
-[filename,pathname,filterindex] = uigetfile('*.tif', 'Select image file');
+[filename,pathname,filterindex] = uigetfile('../*.tif', 'Select image file');
 file_cat = strcat(pathname,filename)
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_cfos_10x_1800ms.tif'
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
@@ -40,7 +40,7 @@ Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
 
 candidate_centroid = [];
 for i = 1:n
-     if Candidate_properties(i).Area < 25                ||  Candidate_properties(i).Area > 200
+     if Candidate_properties(i).Area < 25                ||  Candidate_properties(i).Area > 400
         L(Candidate_properties(i).PixelIdxList) = 0;
     else 
         candidate_centroid = [candidate_centroid; Candidate_properties(i).Centroid];
@@ -49,7 +49,7 @@ end
 % figure;imshow(L)
 
 
-[L2, n] = bwlabel(L);
+[L2, num_of_candidates] = bwlabel(L);
 figure;imshow(L); title('L2')
 Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 
@@ -57,14 +57,14 @@ Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList');
 %%
 % import tag
 % raw both numeric and text data in cell array
-% [filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select tag file');
-% file_cat = strcat(pathname,filename);
+[filename,pathname,filterindex] = uigetfile('../*.xlsx', 'Select tag file');
+file_cat = strcat(pathname,filename);
 
 
 % raw takes both numeric and text data in cell array
 
 
-file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx';
+% file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx';
 [num,txt,raw] = xlsread(file_cat);
 
 
@@ -92,9 +92,7 @@ plot(candidate_centroid(:,1), candidate_centroid(:,2), 'go')
 %Recomputing the candidate patches after filtering out size
 
 patch_size = 80;
-
-for i=1:n
-
+for i=1:num_of_candidates
     % filter
     % set pixelidxlist of target candidate to 1, all the other to 0
     Base = zeros(size(L2));
@@ -122,9 +120,9 @@ end
 %Shape features
 
 
-Shape_features = zeros(n,10);
-for i = 1:n
-   gg = i
+Shape_features = zeros(num_of_candidates,10);
+for i = 1:num_of_candidates
+%    gg = i
 %    figure;imshow(BW_patch(160).image);
     Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size);
    
@@ -140,9 +138,9 @@ num_histogram_bins = 16;
 Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
 
 [a,b] = size(Texture_features);
-Texture_features = zeros(n, a*b);
+Texture_features = zeros(num_of_candidates, a*b);
 
-for i = 1:n
+for i = 1:num_of_candidates
     Texture_matrix = Compute_MR8(Gray_Patch_normal(i).image, num_histogram_bins);
     Texture_features(i,:) = reshape(Texture_matrix, [1,a*b]);
 end
@@ -157,9 +155,9 @@ end
 %5 parameters: int nb_bins, double cwidth, int block_size, int orient,  double clip_val
 
 HoG_features = HoG(im2double(Gray_Patch_normal(1).image), [9,10,6,1,0.2]);
-HoG_features = zeros(n,length(HoG_features));
+HoG_features = zeros(num_of_candidates,length(HoG_features));
 
-for i = 1:n
+for i = 1:num_of_candidates
     HoG_features(i,:) = HoG(im2double(Gray_Patch_normal(i).image), [9,10,6,1,0.2]);
 end
 
@@ -168,4 +166,14 @@ end
 %%
 % putting together all features vectors
 Feature_vector = horzcat(Shape_features, Texture_features, HoG_features);
+
+Label_vector = zeros(num_of_candidates,1);
+
+for i = 1:num_of_positive_signals
+    Label_vector(positive_signals(i,1)) = 1;
+end
+    
+    
+
+
 
