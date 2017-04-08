@@ -22,7 +22,6 @@ Props = regionprops(Binary_image, 'Solidity', 'Perimeter',...
                     'ConvexArea', 'MajorAxisLength', 'MinorAxisLength',...
                     'Extent');
                 
-
 % 
 % %Find the biggest area from the region props function. Your target should
 % %have the largest area. Don't need the area of the noise or background
