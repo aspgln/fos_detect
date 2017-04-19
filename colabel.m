@@ -24,25 +24,31 @@ Product = Cfos_mask .* Tdt_mask;
 figure;imshow(Product);title('after multiplication')
 
 
-[L,n] = bwlabel(Product);
-Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
+[Colabel_L,n] = bwlabel(Product);
+Colabel_Candidate_properties = regionprops(Colabel_L,'Area', 'PixelIdxList', 'Centroid');
 
 
 %% first filter by size
 % 
 for i = 1:n
-     if Candidate_properties(i).Area < 50                
-        L(Candidate_properties(i).PixelIdxList) = 0;
+     if Colabel_Candidate_properties(i).Area < 50                
+        Colabel_L(Colabel_Candidate_properties(i).PixelIdxList) = 0;
     end 
 end
-figure;imshow(L);title('filter by area');
+figure;imshow(Colabel_L);title('filter by area');
 
-[L,n] = bwlabel(L);
-Candidate_properties = regionprops(L, 'PixelIdxList', 'Centroid');
+[Colabel_L,n] = bwlabel(Colabel_L);
+Colabel_Candidate_properties = regionprops(Colabel_L, 'PixelIdxList', 'Centroid');
 
 
 %% second filter by centroid, 
 
 
 
+
+
 %% output label, and visualize on the image to see how they spread 
+
+
+
+
