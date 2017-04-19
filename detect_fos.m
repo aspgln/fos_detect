@@ -7,7 +7,7 @@ clc
 
 %Choosing image file 
 [filename,pathname,filterindex] = uigetfile('../*.tif', 'Select image file');
-file_cat = strcat(pathname,filename)
+file_cat = strcat(pathname,filename);
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_cfos_10x_1800ms.tif'
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
 
@@ -165,7 +165,7 @@ end
 
 %%
 % putting together all features vectors
-Feature_vector = horzcat(Shape_features, Texture_features, HoG_features);
+Feature_vector = [Shape_features  Texture_features HoG_features];
 
 Label_vector = zeros(num_of_candidates,1);
 
@@ -174,6 +174,3 @@ for i = 1:num_of_positive_signals
 end
     
     
-
-
-
