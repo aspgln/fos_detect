@@ -21,7 +21,7 @@ train_label = Label_vector;
 % -g gamma
 
 % model = svmtrain(train_label, train_data, '-c 1 -b 1 -t 0 -s 0');
-model = svmtrain(train_label, train_data, '-c 0.889 -b 0 -g 0.01 -t 0 -s 0');
+model = svmtrain(train_label, train_data, '-c 5 -b 0  -t 0 -s 0');
 
 
 
@@ -68,9 +68,9 @@ test_label = Label_vector;
 [predict_label_S, accuracy_S, dec_values_S] = ...
        svmpredict(test_label, test_data, model_sigmoid); 
    
-[predicted_label, accuracy, prob_estimates] = ... 
-    svmpredict(test_label, test_data, model, '-b 1');
-
+  [predicted_label, accuracy, prob_estimates] = ... 
+      svmpredict(test_label, test_data, model, '-b 1');
+%  
 
 
 
@@ -117,5 +117,8 @@ for i = 1:length(mislabel)
         text(x,y,'  true +','color','g');
     end
 end
+
+
+% confusion matrix
 
 
