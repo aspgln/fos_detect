@@ -2,27 +2,45 @@ clear all
 close all
 clc
 
-target = input('cfos or tdt: ', 's');
-
-
-[filename,pathname,filterindex] = uigetfile('../images/*.tif', 'Select image file');
-image_path = [pathname, filename];
-
-[filename,pathname,filterindex] = uigetfile('../images/*.xlsx', 'Select tag file');
-tag_path = [pathname, filename];
-
-[Feature_vector, Label_vector, num_of_candidates] = extract_feature(image_path, tag_path, target);
-
-
 %%
+counter = 0;
+answer = input('more images? y or n', 's');
+
+cfos_feature_vector = [];
+cfos_label_vector = [];
+tdt_feature_vector = [];
+tdt_label_vector = [];
+
+while answer == y
+    counter = counter + 1;
+    target = ['cfos', 'tdt'];
+    
+    [filename,pathname] = uigetfile('../images/*.tif', 'Select cfos image file');
+    cfos_image_path = [pathname, filename];
+    
+    [filename,pathname] = uigetfile('../images/*.tif', 'Select tdt image file');
+    tdt_image_path = [pathname, filename];
+    
+    [filename,pathname] = uigetfile('../images/*.xlsx', 'Select tag file');
+    tag_path = [pathname, filename];
+    
+    [cfos_features, cfos_labels] = extract_feature(cfos_image_path, tag_path, 'cfos');
+    
+    cfos_feature_vector = [cfos_feature_vector; cfos_features];
+    cfos_label_vector = [cfos_label_vector; cfos_labels];
+
+    [tdt_features, tdt_labels] = extract_feature(tdt_image_path, tag_path, 'tdt');
+    tdt_feature_vector = [tdt_feature_vector; tdt_features];
+    tdt_label_vector = [tdt_label_vector; tdt_labels];
+
+end
 
 
-
-%% read train data
-
-train_data = Feature_vector;
-train_label = Label_vector;
 %% train model
+
+% train_data = Feature_vector;
+% train_label = Label_vector;
+
 % -s svm_type 
 % -t kernel_type 
 % -b probability_estimates 0 for SVC
@@ -30,25 +48,19 @@ train_label = Label_vector;
 % -g gamma
 
 % model = svmtrain(train_label, train_data, '-c 1 -b 1 -t 0 -s 0');
-model = svmtrain(train_label, train_data, '-c 5 -b 0  -t 0 -s 0');
+cfos_model = svmtrain(cfos_label_vector, cfos_feature_vector, '-c 5 -b 0  -t 0 -s 0');
+cfos_model_linear = svmtrain(cfos_label_vector, cfos_feature_vector, '-t 0');
+cfos_model_polynomial = svmtrain(cfos_label_vector, cfos_feature_vector, '-t 1');
+cfos_model_RBF = svmtrain(cfos_label_vector, cfos_feature_vector, '-t 2');
+cfos_model_sigmoid = svmtrain(cfos_label_vector, cfos_feature_vector, '-t 3');
+
+tdt_model = svmtrain(tdt_label_vector, tdt_feature_vector, '-c 5 -b 0  -t 0 -s 0');
+tdt_model_linear = svmtrain(tdt_label_vector, tdt_feature_vector, '-t 0');
+tdt_model_polynomial = svmtrain(tdt_label_vector, tdt_feature_vector, '-t 1');
+tdt_model_RBF = svmtrain(tdt_label_vector, tdt_feature_vector, '-t 2');
+tdt_model_sigmoid = svmtrain(tdt_label_vector, tdt_feature_vector, '-t 3');
 
 
-
-% % Linear Kernel
-model_linear = svmtrain(train_label, train_data, '-t 0');
-% 
-% % Polynomical Kernal
-model_polynomial = svmtrain(train_label, train_data, '-t 1');
-% 
-% % RBF/Gaussian Kernal
-model_RBF = svmtrain(train_label, train_data, '-t 2');
-% 
-% % Sigmoid Kernal
-model_sigmoid = svmtrain(train_label, train_data, '-t 3');
-
-
-
-%
 %% 
 [filename,pathname,filterindex] = uigetfile('../images/*.tif', 'Select image file');
 image_path = [pathname, filename];
@@ -57,6 +69,7 @@ image_path = [pathname, filename];
 tag_path = [pathname, filename];
 
 [Feature_vector, Label_vector, num_of_candidates] = extract_feature(image_path, tag_path, target);
+
 
 
 %% test model
@@ -105,14 +118,19 @@ Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
 
 candidate_centroid = [];
 for i = 1:n
-     if Candidate_properties(i).Area < 15                ||  Candidate_properties(i).Area > 400
+     if Candidate_properties(i).Area < 25               ||  Candidate_properties(i).Area > 400
         L(Candidate_properties(i).PixelIdxList) = 0;
     else 
         candidate_centroid = [candidate_centroid; Candidate_properties(i).Centroid];
     end 
 end
+% figure;imshow(L)
 
 
+[L2, num_of_candidates] = bwlabel(L);
+figure;imshow(L); title('L2')
+Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
+%%
 mislabel = [];
 num_of_mislabel = 0;
 for i = 1:num_of_candidates
