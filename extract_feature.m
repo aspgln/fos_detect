@@ -1,0 +1,1 @@
+function [Feature_vector, Label_vector] = extract_feature(image_path, tag_path)
