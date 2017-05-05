@@ -6,7 +6,7 @@ clc
 %pick out candidate areas that are fos positive. 
 
 %Choosing image file 
-[filename,pathname,filterindex] = uigetfile('../*.tif', 'Select image file');
+[filename,pathname,filterindex] = uigetfile('../images/*.tif', 'Select image file');
 file_cat = strcat(pathname,filename);
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_cfos_10x_1800ms.tif'
 % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
@@ -57,7 +57,7 @@ Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList');
 %%
 % import tag
 % raw both numeric and text data in cell array
-[filename,pathname,filterindex] = uigetfile('../*.xlsx', 'Select tag file');
+[filename,pathname,filterindex] = uigetfile('../images/*.xlsx', 'Select tag file');
 file_cat = strcat(pathname,filename);
 
 
@@ -70,7 +70,7 @@ file_cat = strcat(pathname,filename);
 
 import_tags = [];
 for i = 1:size(raw,1)
-    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colabel'))
+    if (contains(raw(i,2), 'cfos') || contains(raw(i,2), 'colabel'))
         import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
     end
 end
@@ -80,7 +80,7 @@ end
 
 %%tags-read, centroid-green
 figure;
-imshow(L);
+imshow(I_bw);
 hold on;
 plot(import_tags(:,2), import_tags(:,3),'r*');  % manually tag red
     
