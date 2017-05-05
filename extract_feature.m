@@ -1,22 +1,21 @@
-function [Feature_vector, Label_vector, num_of_candidates] = extract_feature(image_path, tag_path, target)
-
+function [Feature_vector, Label_vector, num_of_candidates, L2] = extract_feature(image_path, tag_path, target)
 
 I = imread(image_path);
 I_bw = mat2gray(I);
 
-mask = mexican_hat(I,80,4,2.5);
-figure;imshow(mask);title('after mexican hat');
+mask = mexican_hat(I,80,4,3);
+% figure;imshow(mask);title('after mexican hat');
 
 % % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
 % I2 = imread(file_cat);
 % I_bw2 = mat2gray(I2);
 
 %%
-%histogram equilization
+% %histogram equilization
 I_equalized = adapthisteq(I_bw,'ClipLimit',.2);
-figure;
-imshow(I_equalized);
-title('adaptive histogram equalization')
+% figure;
+% imshow(I_equalized);
+% title('adaptive histogram equalization')
 
 
 
