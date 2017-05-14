@@ -1,5 +1,5 @@
-function [Feature_vector, Label_vector, num_of_candidates, L2] = extract_feature(image_path, tag_path, target)
-
+function [Feature_vector, num_of_candidates, L2] = extract_feature(image_path)
+% image_path = cfos_test_image_path;
 I = imread(image_path);
 I_bw = mat2gray(I);
 
@@ -43,35 +43,6 @@ figure;imshow(L); title('L2')
 Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 
 
-%%
-% import tag
-% raw both numeric and text data in cell array
-
-% raw takes both numeric and text data in cell array
-
-
-% file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx';
-[num,txt,raw] = xlsread(tag_path);
-
-
-import_tags = [];
-for i = 1:size(raw,1)
-    if (contains(raw(i,2), target) || contains(raw(i,2), 'colabel'))
-        import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
-    end
-end
-
-% import tags, pair tags with candidates
-[num_of_positive_signals,positive_signals] = match_tags(import_tags, Candidate_properties);
-
-%%tags-read, centroid-green
-figure;
-imshow(I_bw);
-hold on;
-plot(import_tags(:,2), import_tags(:,3),'r*');  % manually tag red
-    
-hold on
-plot(candidate_centroid(:,1), candidate_centroid(:,2), 'go')
 
 
 %%
@@ -95,7 +66,7 @@ for i=1:num_of_candidates
 %     figure;imshow(BW_patch.image);
 %     
     
-    
+   
 
 end
 %%
@@ -103,13 +74,13 @@ end
 %--------------------------------------------------------------------------
 
 %Shape features
-
+figure;imshow(BW_patch_reorient(1).image);
 
 Shape_features = zeros(num_of_candidates,10);
 for i = 1:num_of_candidates
-%    gg = i
+%     gg = i
 %    figure;imshow(BW_patch(160).image);
-    Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size);
+    Shape_features(i,:) = compute_shape_features_revised(BW_patch(i).image,patch_size);
    
 end
 % Shape_features = compute_shape_features(BW_patch_reorient(1).image,patch_size, number);
@@ -120,6 +91,7 @@ end
 
 num_histogram_bins = 16;
 
+% determine the size of Texture_vector
 Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
 
 [a,b] = size(Texture_features);
@@ -150,12 +122,7 @@ end
 
 %%
 % putting together all features vectors
-Feature_vector = [Shape_features  Texture_features HoG_features];
+Feature_vector = [Shape_features, Texture_features];
 
-Label_vector = zeros(num_of_candidates,1);
-
-for i = 1:num_of_positive_signals
-    Label_vector(positive_signals(i,1)) = 1;
-end
     
     
