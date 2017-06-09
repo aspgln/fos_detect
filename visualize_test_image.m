@@ -4,7 +4,7 @@ function [] = visualize_test_image (image_path, predict_label)
 I = imread(image_path);
 I_bw = mat2gray(I);
 
-mask = mexican_hat(I,80,4,3);
+mask = mexican_hat(I,80,4,2.5);
 
 [L,n] = bwlabel(mask);
 Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
