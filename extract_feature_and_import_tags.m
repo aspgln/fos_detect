@@ -3,8 +3,8 @@ function [Feature_vector, Label_vector, num_of_candidates, L2] = extract_feature
 I = imread(image_path);
 I_bw = mat2gray(I);
 
-mask = mexican_hat(I,80,4,3);
-% figure;imshow(mask);title('after mexican hat');
+mask = mexican_hat(I,80,4,2.5);
+%figure;imshow(I_bw);title('after mexican hat');
 
 % % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
 % I2 = imread(file_cat);
@@ -35,11 +35,11 @@ for i = 1:n
         candidate_centroid = [candidate_centroid; Candidate_properties(i).Centroid];
     end 
 end
-% figure;imshow(L)
+%  figure;imshow(L)
 
 
 [L2, num_of_candidates] = bwlabel(L);
-figure;imshow(L); title('L2')
+% figure;imshow(L); title('L2')
 Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 
 
@@ -82,7 +82,6 @@ for i=1:num_of_candidates
     % set pixelidxlist of target candidate to 1, all the other to 0
     Base = zeros(size(L2));
     Base(Candidate_properties(i).PixelIdxList) = 1; 
-    
     x = Candidate_properties(i).Centroid(1);
     y = Candidate_properties(i).Centroid(2);
     BW_patch(i).image = create_patch(Base,x,y,patch_size);
@@ -90,9 +89,11 @@ for i=1:num_of_candidates
     
     %Normalizing the patches and reorienting so that it is vertical
     [Gray_Patch_normal(i).image, BW_patch_reorient(i).image] = process_reorient(Gray_patch(i).image, BW_patch(i).image);
+    
+    
 
 
-%     figure;imshow(BW_patch.image);
+%     figure;imshow(BW_patch_reorient(297).image);
 %     
     
     
@@ -106,9 +107,12 @@ end
 
 
 Shape_features = zeros(num_of_candidates,10);
+
+
+
 for i = 1:num_of_candidates
-%    gg = i
-%    figure;imshow(BW_patch(160).image);
+%      gg = i
+%    figure;imshow(Gray_Patch_normal(3).image);
     Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size);
    
 end
