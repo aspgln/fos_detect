@@ -90,7 +90,8 @@ adaboost_train_label_vector (adaboost_train_label_vector == 0) =  -1;
     adaboost_predict_label_1(adaboost_predict_label_1 == -1) = 0;
     adaboost_predict_label_2(adaboost_predict_label_2 == -1) = 0;
 
-%% accuracy    
+%% accuracy 
+
 tp = 0;
 fp = 0;
 fn = 0;
@@ -116,11 +117,12 @@ recall =  tp / (tp + fn);
 
 accuracy = (tp + tn) / (tp + tn + fp + fn );
 
+
 x = {'model 1', ''; 
     'tp', tp; 'fp', fp; 'fn', fn;
     'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
-disp(x)
 
+display(x);
 
 tp = 0;
 fp = 0;
@@ -145,9 +147,11 @@ precision = tp / (tp + fp);
 recall =  tp / (tp + fn);
 
 accuracy = (tp + tn) / (tp + tn + fp + fn );
+
 x = {'model 2', '';
     'tp', tp; 'fp', fp; 'fn', fn;
     'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
+
 disp(x)
 
 %% plot
