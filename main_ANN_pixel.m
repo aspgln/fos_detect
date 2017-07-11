@@ -1,151 +1,106 @@
 %% 
 
-
-
 counter = 0;
 answer = 'y';
 
-pixel_vector = [];
+BW_pixel_vector = [];
+Gray_pixel_vector = [];
 label_vector = [];
 
 while answer == 'y'
-    counter = counter + 1;
+    counter = counter + 1
 %     target = ['cfos', 'tdt'];
     
     [filename,pathname] = uigetfile('../images/new/train/*.tif', 'Select image file');
     train_image_path = [pathname, filename];
+    disp(filename);
 
     % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
     % tdt_test_image_path = [pathname, filename];
 
 
     [filename,pathname] = uigetfile('../images/new/train/*.xlsx', 'Select tag file');
-    tag_path = [pathname, filename]
+    tag_path = [pathname, filename];
+    disp(filename);
 
-    [pixels, labels] = create_pixel_features(train_image_path, tag_path, 'cfos');
+    [BW_pixels,Gray_pixels, labels] = create_pixel_features(train_image_path, tag_path, 'cfos');
     
-    pixel_vector = [pixel_vector  pixels];
-    label_vector = [label_vector  labels];
+    BW_pixel_vector = [BW_pixel_vector;  BW_pixels];
+    Gray_pixel_vector = [Gray_pixel_vector;  Gray_pixels];
+    label_vector = [label_vector;  labels];
     
     answer = input('more training images? y or n : ', 's');
 
 end
-%%  
-I = imread(cfos_train_image_path);
-I_bw = mat2gray(I);
-    
+
+
+
+%% test images
+
+    [filename,pathname] = uigetfile('../images/new/test/*.tif', 'Select image file');
+    cfos_test_image_path = [pathname, filename]
+
+    % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
+    % tdt_test_image_path = [pathname, filename];
+
+    [filename,pathname] = uigetfile('../images/new/test/*.xlsx', 'Select tag file');
+    test_tag_path = [pathname, filename]
+
+    [test_BW_pixels, test_Gray_pixels, test_labels] = create_pixel_features(cfos_test_image_path, test_tag_path, 'cfos');
+
+    % [tdt_test_feature_vector, tdt_test_label_vector] = extract_feature_and_import_tags(tdt_test_image_path, test_tag_path, 'tdt');
+
+
+
 %%
-% %histogram equilization
-I_equalized = adapthisteq(I_bw,'ClipLimit',.2);
-% figure;
-% imshow(I_equalized);
-% title('adaptive histogram equalization')
+[predict_label] = myNeuralNetworkFunction(test_BW_pixels);
+% [predict_label] = NNfun_gray(test_BW_pixels);
+
+predict_label(predict_label < 0.5) = 0;
+predict_label(predict_label >= 0.5) = 1;
 
 
-%%
-mask = mexican_hat(I,80,4,2.5);
-[L,n] = bwlabel(mask);
-Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
 
-candidate_centroid = [];
-for i = 1:n
-     if Candidate_properties(i).Area < 25               ||  Candidate_properties(i).Area > 400
-        L(Candidate_properties(i).PixelIdxList) = 0;
-    else 
-        candidate_centroid = [candidate_centroid; Candidate_properties(i).Centroid];
+%% accuracy 
+
+tp = 0;
+fp = 0;
+fn = 0;
+tn = 0;
+
+
+for i = 1:length(predict_label)
+    if (test_labels(i) == 1) && (predict_label(i) == 1)
+        tp = tp + 1;
+    elseif (test_labels(i) == 1) && (predict_label(i) == 0)
+        fn = fn + 1;
+    elseif (test_labels(i) == 0) && (predict_label(i) == 1)
+        fp = fp + 1    ;
+    elseif (test_labels(i) == 0) && (predict_label(i) == 0)
+        tn = tn + 1;
     end 
-end
-%  figure;imshow(L)
-
-
-[L2, num_of_candidates] = bwlabel(L);
-% figure;imshow(L); title('L2')
-Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
-
-
-%% tag
-
-    
-[num,txt,raw] = xlsread(tag_path);
-
-target = 'cfos';
-import_tags = [];
-for i = 1:size(raw,1)
-    if (contains(raw(i,2), target) || contains(raw(i,2), 'colabel'))
-        import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
-    end
+        
 end
 
-% import tags, pair tags with candidates
-[num_of_positive_signals,positive_signals] = match_tags(import_tags, Candidate_properties);
-pos = positive_signals(:,1);
+precision = tp / (tp + fp);
 
-% set label of positive signals to 1
-Labels = size(num_of_candidates);
-Labels(pos) = 1;
+recall =  tp / (tp + fn);
+
+accuracy = (tp + tn) / (tp + tn + fp + fn );
 
 
-% %%tags-read, centroid-green
-% figure;
-% imshow(I_bw);
-% hold on;
-% plot(import_tags(:,2), import_tags(:,3),'r*');  % manually tag red
-%     
-% hold on
-% plot(candidate_centroid(:,1), candidate_centroid(:,2), 'go')
+x = {'ANN', ''; 
+    'tp', tp; 'fp', fp; 'fn', fn;
+    'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
 
-%% create BW patch around each candidate
-patch_size = 40;
-for i=1:num_of_candidates
-    % filter
-    % set pixelidxlist of target candidate to 1, all the other to 0
-    Base = zeros(size(L2));
-    Base(Candidate_properties(i).PixelIdxList) = 1; 
-    x = Candidate_properties(i).Centroid(1);
-    y = Candidate_properties(i).Centroid(2);
-    BW_patch(i).image = create_patch(Base,x,y,patch_size);
-    Gray_patch(i).image = create_patch(I_equalized, x,y,patch_size);
-    
-    %Normalizing the patches and reorienting so that it is vertical
-%     [Gray_Patch_normal(i).image, BW_patch_reorient(i).image] = process_reorient(Gray_patch(i).image, BW_patch(i).image);
-    
-    
-end
-%      figure;imshow(Gray_patch(308).image);
+
+a = cell2mat(x(2:7,2));
 
 
 
-% plot patches
-figure
-colormap(gray)
-for i = 1:225
-    subplot(15,15,i)
-    patch = reshape(BW_patch(i).image, [41,41]);
-    imagesc(patch)
-end
-  
-figure
-colormap(gray)
-for i = 1:100
-    subplot(10,10,i)
-    patch = reshape(Gray_patch(i).image, [41,41]);
-    imagesc(patch)
-%     title(num2str(tr(i, 1)))                    % show the label
+display(a);
 
-end
+%% analyze
+cfos_mislabel = check_mislabeled(cfos_test_image_path, test_labels, predict_label);
+% % tdt_midlabel = check_mislabeled(tdt_test_image_path, tdt_test_label_vector, tdt_predict_label_L);
 
-%% reshape patches into linear indices
-
-% pixels, BW or Gray ??????
-
-pixel_vector = []
-for i = 1
-    pixels = reshape(BW_patch(i).image, [1,1681]);
-    pixel_vector = [pixel_vector; pixels];
-end
-
-
-
-
-    
-%%
