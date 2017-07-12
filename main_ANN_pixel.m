@@ -4,14 +4,16 @@ counter = 0;
 answer = 'y';
 
 BW_pixel_vector = [];
-Gray_pixel_vector = [];
+Gray1_pixel_vector = [];
+Gray2_pixel_vector = [];
+
 label_vector = [];
 
 while answer == 'y'
     counter = counter + 1
 %     target = ['cfos', 'tdt'];
     
-    [filename,pathname] = uigetfile('../images/new/train/*.tif', 'Select image file');
+    [filename,pathname] = uigetfile('../images/new/DH/train/*.tif', 'Select image file');
     train_image_path = [pathname, filename];
     disp(filename);
 
@@ -19,14 +21,16 @@ while answer == 'y'
     % tdt_test_image_path = [pathname, filename];
 
 
-    [filename,pathname] = uigetfile('../images/new/train/*.xlsx', 'Select tag file');
+    [filename,pathname] = uigetfile('../images/new/DH/train/*.xlsx', 'Select tag file');
     tag_path = [pathname, filename];
     disp(filename);
 
-    [BW_pixels,Gray_pixels, labels] = create_pixel_features(train_image_path, tag_path, 'cfos');
+    [BW_pixels,Gray1_pixels,Gray2_pixels, labels] = create_pixel_features(train_image_path, tag_path, 'cfos');
     
     BW_pixel_vector = [BW_pixel_vector;  BW_pixels];
-    Gray_pixel_vector = [Gray_pixel_vector;  Gray_pixels];
+    Gray1_pixel_vector = [Gray1_pixel_vector;  Gray1_pixels];
+    Gray2_pixel_vector = [Gray2_pixel_vector;  Gray2_pixels];
+
     label_vector = [label_vector;  labels];
     
     answer = input('more training images? y or n : ', 's');
@@ -37,23 +41,50 @@ end
 
 %% test images
 
-    [filename,pathname] = uigetfile('../images/new/test/*.tif', 'Select image file');
+    [filename,pathname] = uigetfile('../images/new/DH/test/*.tif', 'Select image file');
     cfos_test_image_path = [pathname, filename]
 
     % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
     % tdt_test_image_path = [pathname, filename];
 
-    [filename,pathname] = uigetfile('../images/new/test/*.xlsx', 'Select tag file');
+    [filename,pathname] = uigetfile('../images/new/DH/test/*.xlsx', 'Select tag file');
     test_tag_path = [pathname, filename]
 
-    [test_BW_pixels, test_Gray_pixels, test_labels] = create_pixel_features(cfos_test_image_path, test_tag_path, 'cfos');
+    [test_BW_pixels, test_Gray1_pixels, test_Gray2_pixels, test_labels] = create_pixel_features(cfos_test_image_path, test_tag_path, 'cfos');
 
     % [tdt_test_feature_vector, tdt_test_label_vector] = extract_feature_and_import_tags(tdt_test_image_path, test_tag_path, 'tdt');
 
 
 
-%%
-[predict_label] = myNeuralNetworkFunction(test_BW_pixels);
+%% NN
+
+inputs = Gray2_pixel_vector';
+targets = label_vector';
+
+% Create a Pattern Recognition Network
+
+net=patternnet([784]);
+
+
+% Set up Division of Data for Training, Validation, Testing
+net.divideParam.trainRatio = 75/100;
+net.divideParam.valRatio = 15/100;
+net.divideParam.testRatio = 15/100;
+
+
+% Train the Network
+[net,tr] = train(net,inputs,targets);
+view(net);
+
+genFunction(net,'myNN', 'MatrixOnly','yes');
+
+
+
+% [predict_label] = myNeuralNetworkFunction(test_BW_pixels);
+% [predict_label] = myNeuralNetworkFunction(test_Gray1_pixels);
+[predict_label] = myNN(test_Gray2_pixels');
+predict_label = predict_label';
+
 % [predict_label] = NNfun_gray(test_BW_pixels);
 
 predict_label(predict_label < 0.5) = 0;
