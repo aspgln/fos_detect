@@ -4,7 +4,7 @@ function [mislabel] = check_mislabeled (image_path, Label_vector, predict_label)
 I = imread(image_path);
 I_bw = mat2gray(I);
 
-mask = mexican_hat(I,80,4,2.5);
+[mask, A] = mexican_hat(I,80,4,2.5);
 
 [L,n] = bwlabel(mask);
 Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
@@ -39,7 +39,7 @@ for i = 1:num_of_candidates
 end
 
 figure;
-imshow(I_bw);
+imshow(A);
 hold on;
 for i = 1:length(mislabel)
     
