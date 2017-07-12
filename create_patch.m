@@ -27,7 +27,7 @@ shift2 = floor(patch_size/2);
 
 if max(1,x-shift1)== 1       %% if border is on the left
     left = 1;
-    right = patch_size;
+    right = patch_size + 1;
 elseif min(num_column, x + shift2) == num_column 
     right = num_column;      %% if border is on the right
     left = num_column - patch_size;
@@ -38,11 +38,11 @@ end
 
 %up and down
 
-if max(1,y-shift1)== 1       %% if border is on the left
+if max(1,y-shift1)== 1       %% if border is on the top
     up = 1;
-    down = patch_size;
+    down = patch_size + 1;
 elseif min(num_row, y + shift2) == num_row 
-    down = num_row;      %% if border is on the right
+    down = num_row;      %% if border is on the bottom
     up = num_row - patch_size;
 else 
     up = y - shift1;
