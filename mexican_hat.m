@@ -4,8 +4,16 @@ function [Binary_mask, Gray_image] = mexican_hat(I, Size, Sigma, Std)
 %I_bw is a grayscale image, not BW
 I_bw = mat2gray(I);
 
+% Try Wiener
+ J = wiener2(I_bw);
+
+% Try gamma
+% J = imadjust(I_bw, [], [], 1.5);
+% figure;imshow(J);
+% figure;imshow(I_bw);
 %pad image with zeros
-I_pad = padarray(I_bw, [70 70],'replicate');
+% I_pad = padarray(I_bw, [70 70],'replicate');
+I_pad = padarray(J, [70 70],'replicate');
 
 %Creating mexican hat template and convolving with image
 mex_hat = mexhati(Size, Sigma);
