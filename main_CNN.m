@@ -15,40 +15,61 @@ label_vector = [];
 % CountLabel = digitData.countEachLabel;
 % 
 
-%% load images 
-% input has to be patches, not pixels
-counter = 0;
-num_of_image = 9;
 
-while counter ~= num_of_image
-    counter = counter + 1;
-    disp(counter);
-%     target = ['cfos', 'tdt'];
+%% load images
+
+    [filename,pathname] = uigetfile('../images/new/DH/data/cfos/*.tif', ...
+        'Select image file', 'MultiSelect', 'on' );
+
+    cfos_image_path_vector = strcat(pathname, filename(:)); 
     
-    [filename,pathname] = uigetfile('../images/new/DH/train/*.tif', 'Select image file');
-    train_image_path = [pathname, filename];
-    disp(filename);
-
-    % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
-    % tdt_test_image_path = [pathname, filename];
-
-
-    [filename,pathname] = uigetfile('../images/new/DH/train/*.xlsx', 'Select tag file');
-    tag_path = [pathname, filename];
-    disp(filename);
-
-    [BW_pixels,Gray1_pixels,Gray2_pixels, labels, BW_patch, Gray1_patch, Gray2_patch]...
-            = create_pixel_features(train_image_path, tag_path, 'cfos');
+ 
+    [filename,pathname] = uigetfile('../images/new/DH/data/tags/*.xlsx', ...
+        'Select image file', 'MultiSelect' , 'on');
+    tag_path_vector = strcat(pathname, filename(:));
     
-    BW_patch_vector = [BW_patch_vector   BW_patch];
-    Gray1_patch_vector = [Gray1_patch_vector   Gray1_patch];
-    Gray2_patch_vector = [Gray2_patch_vector   Gray2_patch];
     
-    label_vector = [label_vector;  labels];
     
-%     answer = input('more training images? y or n : ', 's');
+    for i = 1: length(cfos_image_path_vector)    
+        disp(i);  
+        [ ~, ~, ~, labels, BW_patch, ~, Gray2_patch]...                       
+            = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
 
-end
+        BW_patch_vector = [BW_patch_vector   BW_patch];
+        Gray2_patch_vector = [Gray2_patch_vector   Gray2_patch];         
+        label_vector = [label_vector;  labels];      
+    
+    end
+    
+
+
+%%
+
+
+imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
+    'label', label_vector);  
+
+
+ Q = length(BW_patch_vector); 
+
+ % divide into three subsets with random indices      
+ [trainInd,testInd] = dividerand(Q,80,20);   
+                       
+ 
+  trainData = struct('BW', imageData.BW(trainInd(1:end)),  'label', imageData.label(trainInd(1:end)));                                   
+
+  testData = struct('BW', imageData.BW(testInd(1:end)),'label', imageData.label(testInd(1:end)));                
+
+ 
+%  
+%  
+%  trainData = struct('BW', imageData.BW(1:1000),  'label', imageData.label(1:1000));                                   
+% %  valData = struct('BW', imageData.BW(valInd(1:end)),'label', imageData.label(valInd(1:end)));                                     
+%  testData = struct('BW', imageData.BW(1001: 1200),'label', imageData.label(1001:1200));                
+% 
+
+
+    
 %% specify layers
 
 % image input layer
@@ -57,7 +78,7 @@ inputlayer = imageInputLayer([41, 41, 1] );
 
 % convolutional layer
 % filter size and Filters are random
-convlayer = convolution2dLayer([4,4],7,'Stride',4);
+convlayer = convolution2dLayer([4,4],7,'Stride',3);
 
 % RELU layer
 relulayer = reluLayer();
@@ -88,50 +109,40 @@ layers = [inputlayer
           coutputlayer];
       
 %% train
-X = zeros(41,41,1,length(BW_patch_vector));
-for i = 1:length(BW_patch_vector)
-    X(:,:,1, i) = BW_patch_vector(i).image;
+X = zeros(41,41,1,length(trainData.BW));
+for i = 1:length(trainData.BW)
+    X(:,:,1, i) = trainData.BW(i).image;
 end
-a = BW_patch_vector(1).image;
 
 
-Y = categorical(label_vector);
+Y = categorical(trainData.label);
 
 options = trainingOptions('sgdm');
 
 trainedNet = trainNetwork(X, Y,layers,options);
 
 
-%% test 
-[filename,pathname] = uigetfile('../images/new/DH/test/*.tif', 'Select image file');
-    cfos_test_image_path = [pathname, filename]
 
-    % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
-    % tdt_test_image_path = [pathname, filename];
+    
 
-    [filename,pathname] = uigetfile('../images/new/DH/test/*.xlsx', 'Select tag file');
-    test_tag_path = [pathname, filename]
-
-    [test_BW_pixels, test_Gray1_pixels, test_Gray2_pixels, test_labels, test_BW_patch, test_Gray1_patch, test_Gray2_patch] = ...
-        create_pixel_features(cfos_test_image_path, test_tag_path, 'cfos');
-
+    
+    
 %% classify and test
     
-XTest = zeros(41,41,1,length(test_BW_patch));
+XTest = zeros(41,41,1,length(testData.BW));
 
 
-for i = 1:length(test_BW_patch)
-    XTest(:,:,1, i) = test_BW_patch(i).image;
+for i = 1:length(testData.BW)
+    XTest(:,:,1, i) = testData.BW(i).image;
 end
 
 
-a = test_BW_patch(1).image;
 
 
 [YTest,scores] = classify(trainedNet,XTest);
 
 
-TTest = categorical(test_labels);
+TTest = categorical(testData.label);
     
 accuracy = sum(YTest == TTest)/numel(TTest)
    
@@ -175,5 +186,6 @@ display(a);
 
     
     
-    
+ hist(testData.label);
+ 
     
