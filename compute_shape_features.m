@@ -17,26 +17,17 @@ function [Features] = compute_shape_features(Binary_image,patch_size,number)
 %remains is your target at the center of the patch/window
 Binary_image = imclearborder(Binary_image);
 
-
-
 Props = regionprops(Binary_image, 'Solidity', 'Perimeter',...
                     'Orientation','EquivDiameter','Area', 'Eccentricity',...
                     'ConvexArea', 'MajorAxisLength', 'MinorAxisLength',...
                     'Extent');
 
-                
-
-
 %Find the biggest area from the region props function. Your target should
 %have the largest area. Don't need the area of the noise or background
-% if length(Props) ~= 1
-%     Areas = regionprops(Binary_image, 'Area');
-%     Areas_array = struct2array(Areas);
-%     [Sorted_Areas, Sorted_Index] = sort(Areas_array,'descend');
-% 
-% % 
-[Sorted_Area, Sorted_Index] = sort(Props.Area, 'descend');
-% Area = Sorted_Area(1);%take the largest area
+
+
+[Sorted_Area, Sorted_Index] = sort(Props.Area);
+Area = Sorted_Area(1:number);
 
 
 %Creating normalized vector of Features

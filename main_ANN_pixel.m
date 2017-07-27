@@ -6,7 +6,6 @@ answer = 'y';
 BW_pixel_vector = [];
 Gray1_pixel_vector = [];
 Gray2_pixel_vector = [];
-
 label_vector = [];
 
 while answer == 'y'
@@ -27,6 +26,7 @@ while answer == 'y'
 
     [BW_pixels,Gray1_pixels,Gray2_pixels, labels] = create_pixel_features(train_image_path, tag_path, 'cfos');
     
+   
     BW_pixel_vector = [BW_pixel_vector;  BW_pixels];
     Gray1_pixel_vector = [Gray1_pixel_vector;  Gray1_pixels];
     Gray2_pixel_vector = [Gray2_pixel_vector;  Gray2_pixels];
@@ -56,14 +56,14 @@ end
 
 
 
-%% NN
+%% NN train
 
 inputs = Gray2_pixel_vector';
 targets = label_vector';
 
 % Create a Pattern Recognition Network
 
-net=patternnet([784]);
+net=patternnet([100]);
 
 
 % Set up Division of Data for Training, Validation, Testing

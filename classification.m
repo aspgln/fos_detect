@@ -1,12 +1,11 @@
 % read tag number, X, Y
-% [filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select excel file');
-% file_cat = strcat(pathname,filename); 
-[num,txt,raw] = xlsread('/Users/qingdai/Desktop/fos_detection/pictures/tagged data of #20 E3 LDH.xlsx');
-
+[filename,pathname,filterindex] = uigetfile('*.xlsx', 'Select excel file');
+file_cat = strcat(pathname,filename);
+[num,txt,raw] = xlsread(file_cat);
 
 import_tags = [];
 for i = 1:size(raw,1)
-    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colab3el'))
+    if (contains(raw(i,2), 'Cfos') || contains(raw(i,2), 'Colabel'))
         import_tags = [import_tags;horzcat(num(i-1,1), num(i-1,3:4))];
     end
 end
@@ -53,9 +52,9 @@ for i = 1:length(positive_signals_index)
     plot(centroid(positive_signals_index(i),1),  centroid(positive_signals_index(i),2), 'gx');
 end
 
-centroid(160,1), centroid(160,2)
-hold on
-plot(centroid(160,1), centroid(160,2),'r*')
+
+% hold on
+% plot(1497,917,'r*')
 %%
 figure;
 imshow(BW_patch_reorient(4).image);
@@ -68,7 +67,7 @@ imshow(BW_patch_reorient(4).image);
 
 for i = 1:num_of_positive_signals
     pos_in_centroid = positive_signals_index(i,1);
-    label_vector(pos_in_centroid, 1) = 1;
+    Feature_vector(pos_in_centroid, num_of_features + 1) = 1;
     figure; 
     imshow(BW_patch_reorient(i).image);
     

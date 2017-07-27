@@ -6,15 +6,14 @@ clc
 %Declare Variables and find images
 %--------------------------------------------------------------------------
 
-% min_fos_size = input('What is the minimum synapse size?');
-% max_fos_size = input('What is the maximum synapse size?');
-patch_size = 80;
+min_fos_size = input('What is the minimum synapse size?');
+max_fos_size = input('What is the maximum synapse size?');
+patch_size = 60;
 number = 1; %number of objects that comprise your target
 num_histogram_bins = 16;
-% [filename,pathname,filterindex] = uigetfile('*.tif', 'Select image file');
-% file_cat = strcat(pathname,filename);
-% I = imread(file_cat);
-I = imread('/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_cfos_10x_1800ms.tif');
+[filename,pathname,filterindex] = uigetfile('*.tif', 'Select image file');
+file_cat = strcat(pathname,filename);
+I = imread(file_cat);
 I_bw = I(:,:,1);
 I_bw = uint8(I_bw);
 
@@ -30,7 +29,7 @@ title('original bw');
 
 %%
 %histogram equilization
-I_equalized = adapthisteq(I_bw,'ClipLimit',.2);
+I_equalized = adapthisteq(I_bw,'ClipLimit',1);
 figure
 imshow(I_equalized);
 title('adaptive histogram equalization')
@@ -49,44 +48,40 @@ BW = im2bw(J,graythresh(J));   %Thresholding to create binary mask
 %  title('binarized adjusted')
 %%
 %Detecting groups of pixels whose gradient is higher than surroundings
-U = imextendedmax(I_equalized,17);
+U = imextendedmax(I_equalized,30);
 figure;imshow(U);
-title('IMextendedmax');
+% title('IMextendedmax');
 
 %%
 U = imfill(U,'holes');       %Filling in holes
-  figure;imshow(U);
- title('Holes filled')
+%  figure;imshow(U);
+% title('Holes filled')
 
 %%
-%  se = strel('disk',1);
-%  BW3 = imopen(U,se);
+se = strel('disk',1);
+% BW3 = imopen(BW2,se);
 %  figure;imshow(BW3);
-%  title('after decimation');
+% % title('after decimation');
 
 %%
-%  BW4 = imclose(BW3,se);
+% BW4 = imclose(BW3,se);
 %  figure;imshow(BW4);
-%  title('After dilation')
+% % title('After dilation')
 
 %%
 %Finding candidate segments
 %--------------------------------------------------------------------------
 
 [L,n] = bwlabel(U);
-figure;imshow(L); title('L')
-
 Candidate_properties = regionprops(L,'Area', 'Perimeter', 'PixelIdxList');
 
 for i = 1:n
-    if Candidate_properties(i).Area < 50 || Candidate_properties(i).Area > 800
+    if Candidate_properties(i).Area < 100 || Candidate_properties(i).Area > 1000
         L(Candidate_properties(i).PixelIdxList) = 0;
     end 
 end
 
-figure;imshow(L); title('L')
-
-
+figure;imshow(L);
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,8 +90,6 @@ figure;imshow(L); title('L')
 
 %Recomputing the candidate patches after filtering out for size previously 
 [L2, n] = bwlabel(L);
-figure;imshow(L); title('L2')
-
 Region = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 %%
 %Creating window patches for candidates
@@ -107,14 +100,14 @@ for i = 1:n
     BW_patch(i).image = create_patch(L2,x,y,patch_size)/i;
     Gray_patch(i).image = create_patch(I_equalized, x,y,patch_size);
     
-
+    %figure; imshow(BW_patch(i).image)
+    %figure; imshow(Gray_patch(i).image) 
     
     %Normalizing the patches and reorienting so that it is vertical
     [Gray_Patch_normal(i).image, BW_patch_reorient(i).image] = process_reorient(Gray_patch(i).image, BW_patch(i).image);
-
+    %figure; imshow(BW_patch_reorient(i).image)
+    %figure; imshow(Gray_patch_normal(i).image) 
 end
-% figure; imshow(BW_patch_reorient(98).image)
-% figure; imshow(Gray_patch_normal(95).image)
 
 %%
 %Start extracting features
@@ -123,14 +116,19 @@ end
 %Shape features
 
 
+% for i = 1:n
+%     figure; 
+%     imshow(BW_patch_reorient(i).image);
+% end
+
+
 Shape_features = zeros(n,10);
-for i = 1:n-1
+for i = 1%:n
    gg = i
-%    figure;imshow(BW_patch(160).image);
-    Shape_features(i,:) = compute_shape_features_revised(BW_patch_reorient(i).image,patch_size, number);
+    Shape_features(i,:) = compute_shape_features(BW_patch_reorient(i).image,patch_size, number);
    
 end
-% Shape_features = compute_shape_features(BW_patch_reorient(1).image,patch_size, number);
+% Shape_features = compute_shape_features(BW_patch_reorient(32).image,patch_size, number);
 
 
 %%
@@ -146,7 +144,7 @@ for i = 1:n
     Texture_features(i,:) = reshape(Texture_matrix, [1,a*b]);
 end
 
-% Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
+% Texture_features = Compute_MR8(Gray_Patch_normal(32).image, num_histogram_bins);
 
 
 
@@ -169,8 +167,9 @@ end
 Feature_vector = horzcat(Shape_features, Texture_features, HoG_features);
 num_of_features = size(Feature_vector, 2);
 
-     
-label_vector = zeros(n,1);
+       
+Feature_vector = horzcat(Feature_vector, zeros(n, 1));
+
 
 
 

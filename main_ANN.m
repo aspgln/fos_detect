@@ -1,3 +1,13 @@
+%% 
+% This is the script for neural network classifier
+% Pattern Recognition App in Neural Network Toolbox is used
+% input features are processed from 
+
+% Inputs:       Shape features + texutre feature
+% # of neurons: 10, 20, 50 
+% Output:       0 1
+
+
 %% test images
 
     [filename,pathname] = uigetfile('../images/new/test/*.tif', 'Select image file');
@@ -68,6 +78,7 @@ accuracy = (tp + tn) / (tp + tn + fp + fn );
 x = {'ANN', ''; 
     'tp', tp; 'fp', fp; 'fn', fn;
     'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
+
 
 display(x);
 

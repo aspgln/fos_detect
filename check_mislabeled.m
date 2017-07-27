@@ -39,7 +39,7 @@ for i = 1:num_of_candidates
 end
 
 figure;
-imshow(A);
+imshow(I_bw);
 hold on;
 for i = 1:length(mislabel)
     

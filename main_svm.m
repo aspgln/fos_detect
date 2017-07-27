@@ -16,13 +16,16 @@ while answer == 'y'
 %     target = ['cfos', 'tdt'];
     
     [filename,pathname] = uigetfile('../images/new/untitled folder/*.tif', 'Select cfos image file');
-    cfos_image_path = [pathname, filename]
+    cfos_image_path = [pathname, filename];
+    disp(filename);
     
 %     [filename,pathname] = uigetfile('../images/*.tif', 'Select tdt image file');
 %     tdt_image_path = [pathname, filename];
     
     [filename,pathname] = uigetfile('../images/new/untitled folder/*.xlsx', 'Select tag file');
-    tag_path = [pathname, filename]
+    tag_path = [pathname, filename];
+    disp(filename);
+
     
     [cfos_features, cfos_labels] = extract_feature_and_import_tags(cfos_image_path, tag_path, 'cfos');
     
@@ -76,13 +79,13 @@ cfos_model_linear = svmtrain(cfos_label_vector, cfos_feature_vector, ' -b 1 -t 0
 
 %% test images
 
-    [filename,pathname] = uigetfile('../images/new/untitled folder/*.tif', 'Select image file');
+    [filename,pathname] = uigetfile('../images/new/test/*.tif', 'Select image file');
     cfos_test_image_path = [pathname, filename]
 
     % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
     % tdt_test_image_path = [pathname, filename];
 
-    [filename,pathname] = uigetfile('../images/new/untitled folder/*.xlsx', 'Select tag file');
+    [filename,pathname] = uigetfile('../images/new/test/*.xlsx', 'Select tag file');
     test_tag_path = [pathname, filename]
 
     [cfos_test_feature_vector, cfos_test_label_vector] = extract_feature_and_import_tags(cfos_test_image_path, test_tag_path, 'cfos');

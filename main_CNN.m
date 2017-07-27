@@ -1,5 +1,6 @@
-%% set default
 
+
+%% set default
 
 BW_patch_vector = [];
 Gray1_patch_vector = [];
@@ -23,7 +24,7 @@ label_vector = [];
 
     cfos_image_path_vector = strcat(pathname, filename(:)); 
     
- 
+    
     [filename,pathname] = uigetfile('../images/new/DH/data/tags/*.xlsx', ...
         'Select image file', 'MultiSelect' , 'on');
     tag_path_vector = strcat(pathname, filename(:));
@@ -55,12 +56,14 @@ imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
  % divide into three subsets with random indices      
  [trainInd,testInd] = dividerand(Q,80,20);   
                        
- 
-  trainData = struct('BW', imageData.BW(trainInd(1:end)),  'label', imageData.label(trainInd(1:end)));                                   
 
-  testData = struct('BW', imageData.BW(testInd(1:end)),'label', imageData.label(testInd(1:end)));                
+  trainData = struct('BW', imageData.BW(trainInd(1:end)), 'Gray', ...
+      imageData.Gray(trainInd(1:end)), 'label', imageData.label(trainInd(1:end)));                                   
 
- 
+  testData = struct('BW', imageData.BW(testInd(1:end)), 'Gray', ...
+      imageData.Gray(testInd(1:end)), 'label', imageData.label(testInd(1:end)));                
+
+
 %  
 %  
 %  trainData = struct('BW', imageData.BW(1:1000),  'label', imageData.label(1:1000));                                   
@@ -70,7 +73,7 @@ imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
 
 
     
-%% specify layers
+%% %% specify layers
 
 % image input layer
 % data augmentation is used to reduce overfitting
@@ -78,7 +81,7 @@ inputlayer = imageInputLayer([41, 41, 1] );
 
 % convolutional layer
 % filter size and Filters are random
-convlayer = convolution2dLayer([4,4],7,'Stride',3);
+convlayer = convolution2dLayer([4,4],7,'Stride',10);
 
 % RELU layer
 relulayer = reluLayer();
@@ -99,7 +102,7 @@ smlayer = softmaxLayer();
 coutputlayer = classificationLayer();
 
 
-%% construct layers
+% construct layers
 layers = [inputlayer
           convlayer
           relulayer
@@ -146,7 +149,7 @@ TTest = categorical(testData.label);
     
 accuracy = sum(YTest == TTest)/numel(TTest)
    
-%% 
+ 
 tp = 0;
 fp = 0;
 fn = 0;
@@ -186,6 +189,5 @@ display(a);
 
     
     
- hist(testData.label);
  
     

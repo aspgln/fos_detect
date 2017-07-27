@@ -1,9 +1,9 @@
-function [Feature_vector, num_of_candidates, L2] = extract_feature(image_path)
+function [Feature_vector, num_of_candidates, candidate_centroid] = extract_feature(image_path)
 % image_path = cfos_test_image_path;
 I = imread(image_path);
 I_bw = mat2gray(I);
 
-mask = mexican_hat(I,80,4,3);
+mask = mexican_hat(I,80,4,2.5);
 % figure;imshow(mask);title('after mexican hat');
 
 % % file_cat = '/Users/qingdai/Desktop/fos_detection/pictures/#20_E3_LDH_tdt_10x_500ms.tif';
@@ -39,7 +39,7 @@ end
 
 
 [L2, num_of_candidates] = bwlabel(L);
-figure;imshow(L); title('L2')
+% figure;imshow(L); title('L2')
 Candidate_properties = regionprops(L2, 'Centroid', 'PixelIDxList'); 
 
 
@@ -74,7 +74,6 @@ end
 %--------------------------------------------------------------------------
 
 %Shape features
-figure;imshow(BW_patch_reorient(1).image);
 
 Shape_features = zeros(num_of_candidates,10);
 for i = 1:num_of_candidates
