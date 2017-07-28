@@ -16,23 +16,33 @@ Gray2_patch_vector = [];
 label_vector = [];
 
 
+%%
+
+% 
+% d = uigetdir('../data/', 'select a folder');
+% files = dir(fullfile(d, '*.tif'));
+
 
 %% load images
 
 % select multiple image and tag files
-[filename,pathname] = uigetfile('../images/new/DH/data/cfos/*.tif', ...
-    'Select image file', 'MultiSelect', 'on' );
+% [filename,pathname] = uigetfile('../images/new/DH/data/cfos/*.tif', ...
+%     'Select image file', 'MultiSelect', 'on' );
+[filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
+   'Select image file', 'MultiSelect', 'on' );
 cfos_image_path_vector = strcat(pathname, filename(:)); 
 
 
-[filename,pathname] = uigetfile('../images/new/DH/data/tags/*.xlsx', ...
+[filename,pathname] = uigetfile('../data/DH/tag/*.xlsx', ...
     'Select image file', 'MultiSelect' , 'on');
 tag_path_vector = strcat(pathname, filename(:));
 
 
 % extract patches from each image, extract labels
+l = length(filename);
 for i = 1: length(cfos_image_path_vector)    
-    disp(i);  
+    s = sprintf('%d / %d \n', i,l);
+    fprintf(s);   
     [ ~, ~, ~, labels, BW_patch, ~, Gray2_patch]...                       
         = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
 
@@ -108,7 +118,7 @@ layers = [inputlayer
 %% learn
 result = [];
 
-for i = 1:k
+for i = 3
     % divide into two subsets 
     trainInd = find(training(cv,i));
     testInd  = find(test(cv,i));
@@ -128,9 +138,16 @@ for i = 1:k
 
     Y = categorical(trainData.label);
 
-    options = trainingOptions('sgdm');
     
-    % ouput
+    functions = { ...
+    @plot_training_accuracy, ...
+    @(info) stop_training_at_threshold(info,95)};
+
+    options = trainingOptions('sgdm', 'InitialLearnRate',0.03, ...
+        'LearnRateSchedule', 'piecewise', 'LearnRateDropFactor', 0.2,...
+         'LearnRateDropPeriod',5, 'MaxEpochs',10, 'OutputFcn',functions);
+    
+    % output
     s = sprintf('%d / %d', i,k);
     disp(s)
     
@@ -191,7 +208,7 @@ for i = 1:k
     accuracy = (tp + tn) / (tp + tn + fp + fn );
 
 
-    x = {'ANN', ''; 
+    x = {'CNN', ''; 
         'tp', tp; 'fp', fp; 'fn', fn;
         'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
 
