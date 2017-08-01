@@ -40,9 +40,13 @@ tag_path_vector = strcat(pathname, filename(:));
 
 % extract patches from each image, extract labels
 l = length(filename);
-for i = 1: length(cfos_image_path_vector)    
-    s = sprintf('%d / %d \n', i,l);
+tic
+for i = 1: l
+    remain_time = (toc / i) * (l-i);
+    
+    s = sprintf('%d / %d \n %.2f \n', i,l, remain_time);
     fprintf(s);   
+    
     [ ~, ~, ~, labels, BW_patch, ~, Gray2_patch]...                       
         = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
 
@@ -59,13 +63,12 @@ imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
     'label', label_vector);  
 
 Q = length(BW_patch_vector); 
-
 % randomize indices 
-Ind = randperm(Q);
-
+totalInd = randperm(Q);
+Ind = totalInd(1:5000);
 % set k-fold validation
 k = 5;
-cv = cvpartition(Q, 'kfold', k);
+cv = cvpartition(5000, 'kfold', k);
 
 % % divide into three subsets with random indices      
 % [trainInd,testInd] = dividerand(Q,80,20); 
@@ -81,7 +84,7 @@ inputlayer = imageInputLayer([41, 41, 1] );
 
 % convolutional layer
 % filter size and Filters are random
-convlayer = convolution2dLayer([4,4],7,'Stride',4);
+convlayer = convolution2dLayer([4,4],10,'Stride',1);
 
 % RELU layer
 relulayer = reluLayer();
@@ -91,6 +94,7 @@ maxpoollayer = maxPooling2dLayer([2,2], 'Stride', 1);
 % avgpoollayer = averagePooling2dLayer([2,2], 'Stride', 1);
 
 % dropout layer
+droplayer = dropoutLayer();
 
 % fully conncected layer, 2 classes
 fullconnectlayer = fullyConnectedLayer(2);
@@ -107,6 +111,7 @@ layers = [inputlayer
           convlayer
           relulayer
           maxpoollayer
+          droplayer
           fullconnectlayer
           smlayer
           coutputlayer];
@@ -117,8 +122,8 @@ layers = [inputlayer
 
 %% learn
 result = [];
-
-for i = 3
+tic
+for i = 1:k
     % divide into two subsets 
     trainInd = find(training(cv,i));
     testInd  = find(test(cv,i));
@@ -131,9 +136,9 @@ for i = 3
   
   
   % create 4-D image array
-    X = zeros(41,41,1,length(trainData.BW));
-    for j = 1:length(trainData.BW)
-        X(:,:,1, j) = trainData.BW(j).image;
+    X = zeros(41,41,1,length(trainData.Gray));
+    for j = 1:length(trainData.Gray)
+        X(:,:,1, j) = trainData.Gray(j).image;
     end
 
     Y = categorical(trainData.label);
@@ -143,28 +148,34 @@ for i = 3
     @plot_training_accuracy, ...
     @(info) stop_training_at_threshold(info,95)};
 
-    options = trainingOptions('sgdm', 'InitialLearnRate',0.03, ...
-        'LearnRateSchedule', 'piecewise', 'LearnRateDropFactor', 0.2,...
-         'LearnRateDropPeriod',5, 'MaxEpochs',10, 'OutputFcn',functions);
+%     options = trainingOptions('sgdm', 'InitialLearnRate',0.03, ...
+%         'LearnRateSchedule', 'piecewise', 'LearnRateDropFactor', 0.2,...
+%          'LearnRateDropPeriod',5, 'MaxEpochs',10, 'OutputFcn',functions);
+%     
+    options = trainingOptions('sgdm', 'OutputFcn',functions);
     
     % output
-    s = sprintf('%d / %d', i,k);
-    disp(s)
+
+    s = sprintf('%d / %d ', i, k);
+    fprintf(s); 
+    
     
     % train net
     trainedNet = trainNetwork(X, Y,layers,options);
 
 
-  
+    remain_time = (toc / i) * (k-i);
+    s = sprintf('time used: %.2f \n time remains: %.2f \n', toc, remain_time);
+    fprintf(s);
   
   
   
   % create test data
     
-    XTest = zeros(41,41,1,length(testData.BW));
+    XTest = zeros(41,41,1,length(testData.Gray));
     
-    for j = 1:length(testData.BW)
-        XTest(:,:,1, j) = testData.BW(j).image;
+    for j = 1:length(testData.Gray)
+        XTest(:,:,1, j) = testData.Gray(j).image;
     end
 
 
@@ -220,10 +231,11 @@ for i = 3
   
   
 end
-  
-                       
 
-  
+
+%%                       
+output = mean(result,2);
+disp(output);
 
     
    
