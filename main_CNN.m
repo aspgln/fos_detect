@@ -30,7 +30,6 @@ label_vector = [];
 %     'Select image file', 'MultiSelect', 'on' );
 [filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
    'Select image file', 'MultiSelect', 'on' );
-% store file paths in a vector
 cfos_image_path_vector = strcat(pathname, filename(:)); 
 
 
@@ -43,12 +42,11 @@ tag_path_vector = strcat(pathname, filename(:));
 l = length(filename);
 tic
 for i = 1: l
-    % track time
     remain_time = (toc / i) * (l-i);
-    s = sprintf(' %d / %d \n time used: %.2f \n time remains %.2f \n', i,l, toc, remain_time);
+    
+    s = sprintf('%d / %d \n %.2f \n', i,l, remain_time);
     fprintf(s);   
     
-    % extract patches from each image
     [ ~, ~, ~, labels, BW_patch, ~, Gray2_patch]...                       
         = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
 
@@ -60,9 +58,11 @@ end
     
  %% create data structure
 
-% store all patches and corresponding labels in imageData 
+% store all patches and labels in imageData 
 imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
     'label', label_vector);  
+
+
 
 m = length(BW_patch_vector); 
 
@@ -72,21 +72,19 @@ positive_index = find(label_vector);
 % find the indices of all negative signals
 negative_index = setdiff(1:m, positive_index);
 
-posInd = randperm(2500);
-pI = posInd(1:2500);
 
-% randomize negative signal indices
-negInd = randperm(length(negative_index));
-nI = negInd(1:2500);
+% randomly choose subsamples to balance data
+posInd = randsample(positive_index, 2500);
+negInd = randsample(negative_index, 2500);
 
-totalInd = [pI, nI];
+% combine and shuffle subsample
+totalInd = [posInd; negInd'];
+totalInd=totalInd(randperm(length(totalInd)));
 
 
-% set k fo k-fold validation
+% set k-fold validation
 k = 5;
-% cv = cvpartition(Q, 'kfold', k);
-Q = length(totalInd);
-cv = cvpartition(Q, 'kfold', k);
+cv = cvpartition(5000, 'kfold', k);
 
 % % divide into three subsets with random indices      
 % [trainInd,testInd] = dividerand(Q,80,20); 
@@ -102,16 +100,14 @@ inputlayer = imageInputLayer([41, 41, 1] );
 
 % convolutional layer
 % filter size and Filters are random
-convlayer = convolution2dLayer([4,4],15,'Stride',1);
-
-
+convlayer = convolution2dLayer([4,4],10,'Stride',1);
 
 % RELU layer
 relulayer = reluLayer();
 
 % pooling layer
- maxpoollayer = maxPooling2dLayer([2,2], 'Stride', 1);
- avgpoollayer = averagePooling2dLayer([2,2], 'Stride', 1);
+maxpoollayer = maxPooling2dLayer([2,2], 'Stride', 1);
+% avgpoollayer = averagePooling2dLayer([2,2], 'Stride', 1);
 
 % dropout layer
 droplayer = dropoutLayer();
@@ -131,7 +127,6 @@ layers = [inputlayer
           convlayer
           relulayer
           maxpoollayer
-%           avgpoollayer
           droplayer
           fullconnectlayer
           smlayer
@@ -142,14 +137,13 @@ layers = [inputlayer
 
 
 %% learn
-result = zeros(6,5);
+result = [];
 tic
 for i = 1:k
-    % divide into two subsets by indices
+    % divide into two subsets 
     trainInd = find(training(cv,i));
     testInd  = find(test(cv,i));
-    
-    % IMPROVE: get from patch_vector by indices to save stack space
+
     trainData = struct('BW', imageData.BW(trainInd(1:end)), 'Gray', ...
       imageData.Gray(trainInd(1:end)), 'label', imageData.label(trainInd(1:end)));                                   
 
@@ -157,9 +151,7 @@ for i = 1:k
       imageData.Gray(testInd(1:end)), 'label', imageData.label(testInd(1:end)));  
   
   
-  % create 4-D image array (height, width, channel, index)
-  % X: training data, 
-  % Y: traning label
+  % create 4-D image array
     X = zeros(41,41,1,length(trainData.Gray));
     for j = 1:length(trainData.Gray)
         X(:,:,1, j) = trainData.Gray(j).image;
@@ -167,21 +159,19 @@ for i = 1:k
 
     Y = categorical(trainData.label);
 
-    % define ouput functions
+    
     functions = { ...
-    % plot real-time mini-batch accuracy
     @plot_training_accuracy, ...
-    % stop training when accuracy reach threshold
     @(info) stop_training_at_threshold(info,95)};
 
-    % specify training options
 %     options = trainingOptions('sgdm', 'InitialLearnRate',0.03, ...
 %         'LearnRateSchedule', 'piecewise', 'LearnRateDropFactor', 0.2,...
 %          'LearnRateDropPeriod',5, 'MaxEpochs',10, 'OutputFcn',functions);
 %     
     options = trainingOptions('sgdm', 'OutputFcn',functions);
     
-    % tracking
+    % output
+
     s = sprintf('%d / %d ', i, k);
     fprintf(s); 
     
@@ -189,16 +179,15 @@ for i = 1:k
     % train net
     trainedNet = trainNetwork(X, Y,layers,options);
 
-    % time tracking
+
     remain_time = (toc / i) * (k-i);
     s = sprintf('time used: %.2f \n time remains: %.2f \n', toc, remain_time);
     fprintf(s);
   
   
   
-    % test
+  % create test data
     
-    % XTest: testing data
     XTest = zeros(41,41,1,length(testData.Gray));
     
     for j = 1:length(testData.Gray)
@@ -208,7 +197,6 @@ for i = 1:k
 
 
     % predict
-    
     % YTest is predict label
     % TTest is true label
     [YTest,scores] = classify(trainedNet,XTest);
@@ -219,7 +207,7 @@ for i = 1:k
     
     
     
-    % peformance 
+    % calculate peformance 
     
     tp = 0;
     fp = 0;
@@ -253,12 +241,15 @@ for i = 1:k
 
 
    r = cell2mat(x(2:7,2));
-   disp(r);
-   result(:, i) = r;
+
+  result = [result, r];
 
   
+  
 end
-                    
+
+
+%%                       
 output = mean(result,2);
 disp(output);
 
