@@ -72,21 +72,16 @@ positive_index = find(label_vector);
 % find the indices of all negative signals
 negative_index = setdiff(1:m, positive_index);
 
-posInd = randperm(2500);
-pI = posInd(1:2500);
+total_index = [positive_index; negative_index'];
 
-% randomize negative signal indices
-negInd = randperm(length(negative_index));
-nI = negInd(1:2500);
+total_index = total_index(randperm(length(total_index)));
 
-totalInd = [pI, nI];
-
+subtotal_index = total_index(1:5000);
 
 % set k fo k-fold validation
 k = 5;
-% cv = cvpartition(Q, 'kfold', k);
-Q = length(totalInd);
-cv = cvpartition(Q, 'kfold', k);
+% cv = cvpartition(total_index, 'kfold', k);
+cv = cvpartition(subtotal_index, 'kfold', k);
 
 % % divide into three subsets with random indices      
 % [trainInd,testInd] = dividerand(Q,80,20); 
@@ -146,8 +141,8 @@ result = zeros(6,5);
 tic
 for i = 1:k
     % divide into two subsets by indices
-    trainInd = find(training(cv,i));
-    testInd  = find(test(cv,i));
+    trainInd = subtotal_index(training(cv,i));
+    testInd  = subtotal_index(test(cv,i));
     
     % IMPROVE: get from patch_vector by indices to save stack space
     trainData = struct('BW', imageData.BW(trainInd(1:end)), 'Gray', ...
