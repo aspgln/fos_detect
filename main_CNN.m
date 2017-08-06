@@ -84,13 +84,19 @@ negInd = randsample(negative_index, length(positive_index));
 
 % combine and shuffle subsample
 % total_index = [posInd; negInd'];
-total_index = [positive_index; negInd'];
-total_index=total_index(randperm(length(total_index)));
+% total_index = [positive_index; negInd'];
+% total_index=total_index(randperm(length(total_index)));
+total_index = [positive_index; negative_index'];
+
+total_index = total_index(randperm(length(total_index)));
+
+subtotal_index = total_index(1:5000);
 
 
 % set k-fold validation
 k = 5;
 cv = cvpartition(total_index, 'kfold', k);
+% cv = cvpartition(subtotal_index, 'kfold', k);
 
 % % divide into three subsets with random indices      
 % [trainInd,testInd] = dividerand(Q,80,20); 
@@ -155,6 +161,10 @@ for i = 1:k
     trainInd = total_index(training(cv,i));
     testInd  = total_index(test(cv,i));
 
+
+%     trainInd = subtotal_index(training(cv,i));
+%     testInd  = subtotal_index(test(cv,i));
+    
     % IMPROVE: get from patch_vector by indices to save stack space
     trainData = struct('BW', imageData.BW(trainInd(1:end)), 'Gray', ...
       imageData.Gray(trainInd(1:end)), 'label', imageData.label(trainInd(1:end)));                                   
