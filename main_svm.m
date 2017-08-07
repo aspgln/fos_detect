@@ -40,6 +40,166 @@ while answer == 'y'
 
 end
 
+%% set default
+
+BW_patch_vector = [];
+Gray1_patch_vector = [];
+Gray2_patch_vector = [];
+
+label_vector = [];
+ 
+
+%% load images and extract patches
+
+% select multiple image and tag files
+% [filename,pathname] = uigetfile('../images/new/DH/data/cfos/*.tif', ...
+%     'Select image file', 'MultiSelect', 'on' );
+[filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
+   'Select image file', 'MultiSelect', 'on' );
+% store file paths in a vector
+cfos_image_path_vector = strcat(pathname, filename(:)); 
+
+
+[filename,pathname] = uigetfile('../data/DH/tag/*.xlsx', ...
+    'Select image file', 'MultiSelect' , 'on');
+tag_path_vector = strcat(pathname, filename(:));
+
+
+% extract patches from each image, extract labels
+l = length(filename);
+tic
+for i = 1: l
+    % track time
+    remain_time = (toc / i) * (l-i);
+    
+    s = sprintf(' %d / %d \n time used: %.2f \n time remains %.2f \n', i,l, toc, remain_time);    fprintf(s);   
+    fprintf(s);  
+    
+    % extract patches from each image
+    [ labels, BW_patch, ~, Gray2_patch]...                       
+        = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
+
+    BW_patch_vector = [BW_patch_vector   BW_patch];
+    Gray2_patch_vector = [Gray2_patch_vector   Gray2_patch];         
+    label_vector = [label_vector;  labels];      
+
+end
+
+
+ %% create data structure
+
+% store all patches and corresponding in imageData 
+imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
+    'label', label_vector);  
+
+%% extract features from patches
+% shape features
+
+patch_size = 40;
+
+n = length(imageData.BW);
+
+Shape_features = zeros(n,10);
+
+for i = 1:n
+    Shape_features(i,:) = compute_shape_features_revised(BW_patch_vector(i).image,patch_size);
+   if mod(i,1000) == 0
+        disp(i);
+    end
+end
+
+% texture features
+
+num_histogram_bins = 16;
+
+% determine the size of Texture_vector
+Texture_features = Compute_MR8(Gray2_patch_vector(1).image, num_histogram_bins);
+
+
+
+[a,b] = size(Texture_features);
+Texture_features = zeros(n, a*b);
+
+for i = 1:n
+    Texture_matrix = Compute_MR8(Gray2_patch_vector(i).image, num_histogram_bins);
+    Texture_features(i,:) = reshape(Texture_matrix, [1,a*b]);
+    if mod(i,1000) == 0
+        disp(i);
+    end
+end
+
+% Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
+
+
+cfos_feature_vector = [Shape_features, Texture_features];
+
+
+%% 
+featureData = struct('Features', cfos_feature_vector, 'Label', label_vector);  
+
+m = length(BW_patch_vector); 
+
+% find the indices of all positive signals
+positive_index = find(label_vector);
+
+% find the indices of all negative signals
+negative_index = setdiff(1:m, positive_index);
+
+
+% randomly choose subsamples to balance data
+% posInd = randsample(positive_index, 2500);
+% negInd = randsample(negative_index, 2500);
+negInd = randsample(negative_index, length(positive_index));
+
+
+% combine and shuffle subsample
+% total_index = [posInd; negInd'];
+total_index = [positive_index; negInd'];
+
+total_index = total_index(randperm(length(total_index)));
+
+%% set cross validatin
+
+% set k-fold validation
+k = 5;
+cv = cvpartition(total_index, 'kfold', k);
+% cv = cvpartition(subtotal_index, 'kfold', k);
+
+% % divide into three subsets with random indices      
+% [trainInd,testInd] = dividerand(Q,80,20); 
+
+
+
+%% learn
+result = zeros(6,k);
+tic
+
+for i = 1:k
+    % divide into two subsets by indices
+    trainInd = total_index(training(cv,i));
+    testInd  = total_index(test(cv,i));
+    
+    
+    trainData = struct('Features', cfos_feature_vector(trainInd(1:end)), ...
+        'Label', cfos_feature_vector(trainInd(1:end)));                                   
+
+    testData = struct('Features', cfos_feature_vector(testInd(1:end)), ...
+        'Label', cfos_feature_vector(testInd(1:end)));        
+    
+    cfos_model = svmtrain(trainData.Label, trainData.Features, '-c 15 -b 0 -t 0 -s 0');% 267/280
+%     cfos_model_linear = svmtrain(trainData.Label, trainData.Features, ' -b 1 -t 0 -s 0');% 267/280
+
+    
+    [cfos_predict_label, accuracy, dec_values] = ...
+       svmpredict(testData.Label, testData.Features, cfos_model, '-b 0');
+%     [cfos_predict_label_L, accuracy_L, dec_values_L] = ...
+%        svmpredict(testData.Label, testData.Features, cfos_model_linear, '-b 1');
+end
+
+
+
+
+
 
 %% train model
 
