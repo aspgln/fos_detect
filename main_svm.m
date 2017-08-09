@@ -2,56 +2,15 @@ clear all
 close all
 clc
 
-%% extract features
-counter = 0;
-answer = 'y';
+%% import images
 
-cfos_feature_vector = [];
-cfos_label_vector = [];
-tdt_feature_vector = [];
-tdt_label_vector = [];
 
-while answer == 'y'
-    counter = counter + 1;
-%     target = ['cfos', 'tdt'];
-    
-    [filename,pathname] = uigetfile('../images/new/untitled folder/*.tif', 'Select cfos image file');
-    cfos_image_path = [pathname, filename];
-    disp(filename);
-    
-%     [filename,pathname] = uigetfile('../images/*.tif', 'Select tdt image file');
-%     tdt_image_path = [pathname, filename];
-    
-    [filename,pathname] = uigetfile('../images/new/untitled folder/*.xlsx', 'Select tag file');
-    tag_path = [pathname, filename];
-    disp(filename);
+Feature_vector = [];
+Label_vector = [];
 
-    
-    [cfos_features, cfos_labels] = extract_feature_and_import_tags(cfos_image_path, tag_path, 'cfos');
-    
-    cfos_feature_vector = [cfos_feature_vector; cfos_features];
-    cfos_label_vector = [cfos_label_vector; cfos_labels];
 
-%     [tdt_features, tdt_labels] = extract_feature(tdt_image_path, tag_path, 'tdt');
-%     tdt_feature_vector = [tdt_feature_vector; tdt_features];
-%     tdt_label_vector = [tdt_label_vector; tdt_labels];
-    
-    answer = input('more training images? y or n : ', 's');
 
-end
-
-%% set default
-
-BW_patch_vector = [];
-Gray1_patch_vector = [];
-Gray2_patch_vector = [];
-
-label_vector = [];
- 
-
-%% load images and extract patches
-
-% select multiple image and tag files
+% select multiple image and tag files2
 % [filename,pathname] = uigetfile('../images/new/DH/data/cfos/*.tif', ...
 %     'Select image file', 'MultiSelect', 'on' );
 [filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
@@ -64,6 +23,7 @@ cfos_image_path_vector = strcat(pathname, filename(:));
     'Select image file', 'MultiSelect' , 'on');
 tag_path_vector = strcat(pathname, filename(:));
 
+%% extract features 
 
 % extract patches from each image, extract labels
 l = length(filename);
@@ -75,129 +35,161 @@ for i = 1: l
     s = sprintf(' %d / %d \n time used: %.2f \n time remains %.2f \n', i,l, toc, remain_time);    fprintf(s);   
     fprintf(s);  
     
-    % extract patches from each image
-    [ labels, BW_patch, ~, Gray2_patch]...                       
-        = create_pixel_features(cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
-
-    BW_patch_vector = [BW_patch_vector   BW_patch];
-    Gray2_patch_vector = [Gray2_patch_vector   Gray2_patch];         
-    label_vector = [label_vector;  labels];      
-
+     [Features, Labels] = extract_feature_and_import_tags...
+         (cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
+    
+    
+    
+    Feature_vector = [Feature_vector; Features];
+    Label_vector = [Label_vector;  Labels];      
+    
 end
 
 
- %% create data structure
 
-% store all patches and corresponding in imageData 
-imageData = struct('BW', BW_patch_vector, 'Gray', Gray2_patch_vector, ...
-    'label', label_vector);  
-
-%% extract features from patches
-% shape features
-
-patch_size = 40;
-
-n = length(imageData.BW);
-
-Shape_features = zeros(n,10);
-
-for i = 1:n
-    Shape_features(i,:) = compute_shape_features_revised(BW_patch_vector(i).image,patch_size);
-   if mod(i,1000) == 0
-        disp(i);
-    end
-end
-
-% texture features
-
-num_histogram_bins = 16;
-
-% determine the size of Texture_vector
-Texture_features = Compute_MR8(Gray2_patch_vector(1).image, num_histogram_bins);
+%% set indices and cross validation
 
 
-
-[a,b] = size(Texture_features);
-Texture_features = zeros(n, a*b);
-
-for i = 1:n
-    Texture_matrix = Compute_MR8(Gray2_patch_vector(i).image, num_histogram_bins);
-    Texture_features(i,:) = reshape(Texture_matrix, [1,a*b]);
-    if mod(i,1000) == 0
-        disp(i);
-    end
-end
-
-% Texture_features = Compute_MR8(Gray_Patch_normal(1).image, num_histogram_bins);
-
-
-cfos_feature_vector = [Shape_features, Texture_features];
-
-
-%% 
-featureData = struct('Features', cfos_feature_vector, 'Label', label_vector);  
-
-m = length(BW_patch_vector); 
+m = length(Feature_vector);
 
 % find the indices of all positive signals
-positive_index = find(label_vector);
+positive_index = find(Label_vector);
 
 % find the indices of all negative signals
 negative_index = setdiff(1:m, positive_index);
 
-
 % randomly choose subsamples to balance data
-% posInd = randsample(positive_index, 2500);
-% negInd = randsample(negative_index, 2500);
 negInd = randsample(negative_index, length(positive_index));
 
-
 % combine and shuffle subsample
-% total_index = [posInd; negInd'];
 total_index = [positive_index; negInd'];
-
 total_index = total_index(randperm(length(total_index)));
-
-%% set cross validatin
 
 % set k-fold validation
 k = 5;
 cv = cvpartition(total_index, 'kfold', k);
-% cv = cvpartition(subtotal_index, 'kfold', k);
-
-% % divide into three subsets with random indices      
-% [trainInd,testInd] = dividerand(Q,80,20); 
 
 
+%% train and test
 
-%% learn
-result = zeros(6,k);
-tic
+result_1 = zeros(6,k);
+result_2 = zeros(6,k);
 
 for i = 1:k
-    % divide into two subsets by indices
+    disp(i)
+    
+    % divide into two subsets
     trainInd = total_index(training(cv,i));
     testInd  = total_index(test(cv,i));
     
+    trainFeatures = Feature_vector(trainInd(1:end), :);
+    trainLabels = Label_vector(trainInd(1:end), :);
     
-    trainData = struct('Features', cfos_feature_vector(trainInd(1:end)), ...
-        'Label', cfos_feature_vector(trainInd(1:end)));                                   
+    testFeatures = Feature_vector(testInd(1:end), :);
+    testLabels = Label_vector(testInd(1:end), :);
+    
+    
+    % train
+    
+    % -s svm_type 
+    % -t kernel_type 
+    % -b probability_estimates 0 for SVC
+    % -c cost parameter
+    % -g gamma
 
-    testData = struct('Features', cfos_feature_vector(testInd(1:end)), ...
-        'Label', cfos_feature_vector(testInd(1:end)));        
-    
-    cfos_model = svmtrain(trainData.Label, trainData.Features, '-c 15 -b 0 -t 0 -s 0');% 267/280
-%     cfos_model_linear = svmtrain(trainData.Label, trainData.Features, ' -b 1 -t 0 -s 0');% 267/280
+    model_1 = svmtrain(trainLabels, trainFeatures,'-c 15 -b 0 -t 0 -s 0' );
+    model_2 = svmtrain(trainLabels, trainFeatures,' -b 1 -t 0 -s 0' );
 
+    % test 
+    [predictLabels_1, accuracy_1, dec_values_1] = ...
+        svmpredict(testLabels, testFeatures, model_1,  '-b 0');
+     [predictLabels_2, accuracy_2, dec_values_2] = ...
+        svmpredict(testLabels, testFeatures, model_2,  '-b 1');
     
-    [cfos_predict_label, accuracy, dec_values] = ...
-       svmpredict(testData.Label, testData.Features, cfos_model, '-b 0');
-%     [cfos_predict_label_L, accuracy_L, dec_values_L] = ...
-%        svmpredict(testData.Label, testData.Features, cfos_model_linear, '-b 1');
+    % accuracy 
+    
+    % model 1
+    tp = 0;
+    fp = 0;
+    fn = 0;
+    tn = 0;
+
+
+    for j = 1:length(predictLabels_1)
+        if (testLabels(j) == 1) && (predictLabels_1(j) == 1)
+            tp = tp + 1;
+        elseif (testLabels(j) == 1) && (predictLabels_1(j) == 0)
+            fn = fn + 1;
+        elseif (testLabels(j) == 0) && (predictLabels_1(j) == 1)
+            fp = fp + 1    ;
+        elseif (testLabels(j) == 0) && (predictLabels_1(j) == 0)
+            tn = tn + 1;
+        end 
+
+    end
+
+    precision = tp / (tp + fp);
+
+    recall =  tp / (tp + fn);
+
+    accuracy = (tp + tn) / (tp + tn + fp + fn );
+
+
+    x = {'SVM Model 1', ''; 
+        'tp', tp; 'fp', fp; 'fn', fn;
+        'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
+
+
+    r = cell2mat(x(2:7,2));
+    disp('model 1')
+    disp(r);
+    result_1(:, i) = r;		
+    
+    
+    % model 2
+    tp = 0;
+    fp = 0;
+    fn = 0;
+    tn = 0;
+
+
+    for j = 1:length(predictLabels_2)
+        if (testLabels(j) == 1) && (predictLabels_2(j) == 1)
+            tp = tp + 1;
+        elseif (testLabels(j) == 1) && (predictLabels_2(j) == 0)
+            fn = fn + 1;
+        elseif (testLabels(j) == 0) && (predictLabels_2(j) == 1)
+            fp = fp + 1    ;
+        elseif (testLabels(j) == 0) && (predictLabels_2(j) == 0)
+            tn = tn + 1;
+        end 
+
+    end
+
+    precision = tp / (tp + fp);
+
+    recall =  tp / (tp + fn);
+
+    accuracy = (tp + tn) / (tp + tn + fp + fn );
+
+
+    x = {'SVM Model 2', ''; 
+        'tp', tp; 'fp', fp; 'fn', fn;
+        'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
+
+
+    r = cell2mat(x(2:7,2));
+    disp('model 2')
+    disp(r);
+    result_2(:, i) = r;		
 end
 
+disp('avg:');
+output = mean(result_1,2);
+disp(output);
 
-
+output = mean(result_2,2);
+disp(output);
 
 
 
@@ -237,24 +229,6 @@ cfos_model_linear = svmtrain(cfos_label_vector, cfos_feature_vector, ' -b 1 -t 0
 % tdt_model_sigmoid = svmtrain(tdt_label_vector, tdt_feature_vector, '-t 3');
 
 
-%% test images
-
-    [filename,pathname] = uigetfile('../images/new/test/*.tif', 'Select image file');
-    cfos_test_image_path = [pathname, filename]
-
-    % [filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
-    % tdt_test_image_path = [pathname, filename];
-
-    [filename,pathname] = uigetfile('../images/new/test/*.xlsx', 'Select tag file');
-    test_tag_path = [pathname, filename]
-
-    [cfos_test_feature_vector, cfos_test_label_vector] = extract_feature_and_import_tags(cfos_test_image_path, test_tag_path, 'cfos');
- 
-
-
-
-    % [tdt_test_feature_vector, tdt_test_label_vector] = extract_feature_and_import_tags(tdt_test_image_path, test_tag_path, 'tdt');
-
 
 
 %% test model
@@ -269,10 +243,10 @@ cfos_model_linear = svmtrain(cfos_label_vector, cfos_feature_vector, ' -b 1 -t 0
 %   squared error, and squared correlation coefficient (for regression).
 % @matrix, containing decision values ([-1,0] -> -1, [0,1] -> 1)
 
-[cfos_predict_label, accuracy, dec_values] = ...
-       svmpredict(cfos_test_label_vector, cfos_test_feature_vector, cfos_model, '-b 0');
-[cfos_predict_label_L, accuracy_L, dec_values_L] = ...
-       svmpredict(cfos_test_label_vector, cfos_test_feature_vector, cfos_model_linear, '-b 1');
+% [cfos_predict_label, accuracy, dec_values] = ...
+%        svmpredict(cfos_test_label_vector, cfos_test_feature_vector, cfos_model, '-b 0');
+% [cfos_predict_label_L, accuracy_L, dec_values_L] = ...
+%        svmpredict(cfos_test_label_vector, cfos_test_feature_vector, cfos_model_linear, '-b 1');
 %  [cfos_predict_label_P, accuracy_P, dec_values_P] = ...
 %         svmpredict(cfos_test_label_vector, cfos_test_feature_vector, cfos_model_polynomial);
 %  [cfos_predict_label_RBF, accuracy_RBF, dec_values_RBF] = ...
@@ -288,7 +262,6 @@ cfos_model_linear = svmtrain(cfos_label_vector, cfos_feature_vector, ' -b 1 -t 0
 %        svmpredict(cfos_test_label_vector, score_test, cfos_model_linear, '-b 1');
 % 
 %    
-   
 % 
 % [tdt_predict_label, accuracy, dec_valuesL] = ...
 %        svmpredict(tdt_test_label_vector, tdt_test_feature_vector, tdt_model);
