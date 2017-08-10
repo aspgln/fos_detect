@@ -1,15 +1,34 @@
+%% select model
 
-test_model = cfos_model_linear;
-test_model_2 = cfos_model;
-[filename,pathname] = uigetfile('../images/*.tif', 'Select image file');
-test_image_path = [pathname, filename];
+[filename,pathname] = uigetfile('../model/*.mat', ...
+   'Select model' );
+modelPath = [pathname, filename];
+a = load(modelPath, 'Model');
+model = a.Model;
 
-[test_feature_vector, num_of_candidates] = extract_feature(test_image_path);
-test_label_vector = zeros(num_of_candidates,1);
 
-[test_predict_label_L] = svmpredict(test_label_vector, test_feature_vector, test_model, ' -b 1');
+%% select test image
 
-[test_predict_label] = svmpredict(test_label_vector, test_feature_vector, test_model_2);
+[filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
+   'Select image file', 'MultiSelect', 'on' );
+test_image_path_vector = strcat(pathname, filename(:)); 
 
- visualize_test_image(test_image_path, test_predict_label_L);
- visualize_test_image(test_image_path, test_predict_label);
+l = length(filename);
+
+test_Feature_vector = []
+
+for i = 1: l  
+    % need 2 versions
+    [test_Features, Labels] = extract_feature_and_import_tags...
+         (test_image_path_vector{i}, tag_path_vector{i}, 'cfos');
+    
+    test_Feature_vector = [test_Feature_vector; test_Features];
+    
+    % predict 
+    test_RF_predict_labels = predict(model,test_Feature_vector);
+    test_RF_predict_labels = str2double(test_RF_predict_labels);
+    
+    
+    visualize_test_image(test_image_path_vector{i}, test_RF_predict_labels);
+
+end
