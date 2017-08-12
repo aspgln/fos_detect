@@ -3,6 +3,9 @@ function [featvec] = MR8fast(im)
 %input: intensity image
 %output: MR8 feature vector
 
+
+
+
 in = double(im) - mean(mean(im));
 in = in ./ sqrt(mean(mean(in .^ 2)));
 
@@ -49,9 +52,9 @@ i=i+1;
 ims{i} = anigauss_mex(in, sigma, sigma);
 
 % just throw away 25 pixel border...(half support of sigma=10 filter)
-[R,C] = size(ims{1});
-for j=1:i,
-    ims{j} = ims{j}(26:R-25,26:C-25);
-end
+% [R,C] = size(ims{1});
+% for j=1:i,
+%     ims{j} = ims{j}(26:R-25,26:C-25);
+% end
 
 featvec = [ims{8}(:) ims{7}(:) ims{1}(:) ims{3}(:) ims{5}(:) ims{2}(:) ims{4}(:) ims{6}(:)]';
