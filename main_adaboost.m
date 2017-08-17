@@ -40,7 +40,13 @@ for i = 1: l
     
 end
 
+%% load features
+feature_path = '/Users/qingdai/Desktop/fos_detection/data/featureData(I_bw).mat';
+a = load(feature_path);
+a = a.featureData;
 
+Feature_vector = a.Feature;
+Label_vector = a.Label;
 %% cross validation
 
 m = length(Feature_vector);
@@ -52,10 +58,14 @@ positive_index = find(Label_vector);
 negative_index = setdiff(1:m, positive_index);
 
 % randomly choose subsamples to balance data
-negInd = randsample(negative_index, length(positive_index));
+% negInd = randsample(negative_index, length(positive_index));
+% negInd = randsample(negative_index, 6970);
+
 
 % combine and shuffle subsample
-total_index = [positive_index; negInd'];
+total_index = [positive_index; negative_index'];
+% total_index = [positive_index; negative_index'];
+
 total_index = total_index(randperm(length(total_index)));
 
 % set k-fold validation
@@ -66,7 +76,11 @@ cv = cvpartition(total_index, 'kfold', k);
 
 %% train images 
 
-result = zeros(6,k);
+result_1 = zeros(6,k);
+result_2 = zeros(6,k);
+result_3 = zeros(6,k);
+result_4 = zeros(6,k);
+result_5 = zeros(6,k);
 
 for i = 1:k 
     disp(i)
@@ -74,77 +88,74 @@ for i = 1:k
     trainInd = total_index(training(cv,i));
     testInd  = total_index(test(cv,i));
     
+    trainFeatures = Feature_vector(trainInd(1:end), :);
+    trainLabels = Label_vector(trainInd(1:end), :);
     
-    trainData = struct('Features', Feature_vector(trainInd(1:end), :),...
-        'Label', Label_vector(trainInd(1:end)));
-    testData = struct('Features', Feature_vector(testInd(1:end), :),...
-        'Label', Label_vector(testInd(1:end)));
+    testFeatures = Feature_vector(testInd(1:end), :);
+    testLabels = Label_vector(testInd(1:end), :);
     
-    trainData.Label(trainData.Label == 0) =  -1;
+    trainLabels(trainLabels == 0) =  -1;
     
   
     
     % train 
     
-    adaboost_train_features = trainData.Features;
-    adaboost_train_labels = trainData.Label;
-    
-%     adaboost_train_labels (adaboost_train_labels == 0) =  -1;
-    
-    [estimateclasstotal,model_adaboost_1] = adaboost('train',adaboost_train_features,adaboost_train_labels,10);
-    
-    
-    
-    % test
-    cfos_test_feature_vector = testData.Features;
-    adaboost_predict_label_1 = adaboost('apply',cfos_test_feature_vector,model_adaboost_1);
 
-    adaboost_predict_label_1(adaboost_predict_label_1 == -1) = 0;
-    
-    
-    
-    cfos_test_label_vector = testData.Label;
+    1
+    [estimateclasstotal_1,model_adaboost_1] = adaboost('train',...
+    trainFeatures,trainLabels,10);
+2
+    [estimateclasstotal_2,model_adaboost_2] = adaboost('train',...
+    trainFeatures,trainLabels,20);
+3
+    [estimateclasstotal_3,model_adaboost_3] = adaboost('train',...
+    trainFeatures,trainLabels,30);
+4
+    [estimateclasstotal_4,model_adaboost_4] = adaboost('train',...
+    trainFeatures,trainLabels,40);
+5
+    [estimateclasstotal_5,model_adaboost_5] = adaboost('train',...
+   trainFeatures,trainLabels,50);
 
+    % predict
+    predict_label_1 = adaboost('apply',testFeatures,model_adaboost_1);
+    predict_label_2 = adaboost('apply',testFeatures,model_adaboost_2);
+    predict_label_3 = adaboost('apply',testFeatures,model_adaboost_3);
+    predict_label_4 = adaboost('apply',testFeatures,model_adaboost_4);
+    predict_label_5 = adaboost('apply',testFeatures,model_adaboost_5);
 
-    tp = 0;
-    fp = 0;
-    fn = 0;
-    tn = 0;
+    predict_label_1(predict_label_1 == -1) = 0;
+    predict_label_2(predict_label_2 == -1) = 0;
+    predict_label_3(predict_label_3 == -1) = 0;
+    predict_label_4(predict_label_4 == -1) = 0;
+    predict_label_5(predict_label_5 == -1) = 0;
 
-
-    for j = 1:length(adaboost_predict_label_1)
-        if (cfos_test_label_vector(j) == 1) && (adaboost_predict_label_1(j) == 1)
-            tp = tp + 1;
-        elseif (cfos_test_label_vector(j) == 1) && (adaboost_predict_label_1(j) == 0)
-            fn = fn + 1;
-        elseif (cfos_test_label_vector(j) == 0) && (adaboost_predict_label_1(j) == 1)
-            fp = fp + 1    ;
-        elseif (cfos_test_label_vector(j) == 0) && (adaboost_predict_label_1(j) == 0)
-            tn = tn + 1;
-        end 
-
-    end
-
-    precision = tp / (tp + fp);
-
-    recall =  tp / (tp + fn);
-
-    accuracy = (tp + tn) / (tp + tn + fp + fn );
-
-
-    x = {'model 1', ''; 
-        'tp', tp; 'fp', fp; 'fn', fn;
-        'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
-
-
-    r = cell2mat(x(2:7,2));
-   disp(r);
-  result(:, i) = r;		
-  
-  
+    r = check_accuracy(testLabels, predict_label_1);
+    result_1(:, i) = r;		
+    r = check_accuracy(testLabels, predict_label_2);
+    result_2(:, i) = r;	
+    r = check_accuracy(testLabels, predict_label_3);
+    result_3(:, i) = r;	
+    r = check_accuracy(testLabels, predict_label_4);
+    result_4(:, i) = r;	
+    r = check_accuracy(testLabels, predict_label_5);
+    result_5(:, i) = r;	
 end
 
-output = mean(result,2);
-disp(output);
+avg = mean(result_1,2);
+result_1 =  [result_1 avg];	
+avg = mean(result_2,2);
+result_2 =  [result_2 avg];	
+avg = mean(result_3,2);
+result_3 =  [result_3 avg];	
+avg = mean(result_4,2);
+result_4 =  [result_4 avg];	
+avg = mean(result_5,2);
+result_5 =  [result_5 avg];	
 
+%% save model
+
+save('/Users/qingdai/Desktop/fos_detection/model/model_AdaB(I_bw).mat' , ...
+    'model_adaboost_1', 'model_adaboost_2', 'model_adaboost_3', ...
+    'model_adaboost_4', 'model_adaboost_5');
 
