@@ -28,7 +28,7 @@ train_image_tag_vector = setdiff(tag_path_vector,test_tag_path_vector );
     training_Gray2_patch_vector = [];  
     training_Label_vector = [];      
     training_Feature_vector = [];
-
+ 
 
 tic
 for i = 1: length(train_image_tag_vector)
@@ -56,14 +56,14 @@ for i = 1: length(train_image_tag_vector)
 end
  
 
-featureData = struct('Feature',Feature_vector, 'Label', Label_vector );
+featureData = struct('Feature',training_Feature_vector, 'Label', training_Label_vector );
 
 %% save features
-save('/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG).mat' , ...
+save('/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG_25).mat' , ...
     'featureData');
 
 %% load features
-feature_path = '/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG).mat';
+feature_path = '/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG_25).mat';
 a = load(feature_path);
 a = a.featureData;
 
@@ -98,8 +98,7 @@ cv = cvpartition(total_index, 'kfold', k);
 
 %% train and test 
 
-
-
+result = zeros(9,k);
 for i = 1:k
     
     disp(i)
@@ -119,9 +118,8 @@ for i = 1:k
     % random number generation
     rng(1);
     
-    Model = TreeBagger(300,trainFeatures,trainLabels,'OOBPrediction',...
+    Model = TreeBagger(200,trainFeatures,trainLabels,'OOBPrediction',...
         'On', 'Method','classification');
-
 
 %     
     % predict
@@ -134,12 +132,14 @@ for i = 1:k
     [r, f1_score] = check_accuracy(valLabels, predict_labels);
     
     % ROC curve
-    [X2,Y2,T,AUC,OPTROCPT,SUBY] = perfcurve(valLabels,score(:,2), 1);
-    plot(X1,Y1,X2, Y2);
-    result = [r(1:end); AUC; f1_score]
+    [X,Y,T,AUC,OPTROCPT,SUBY] = perfcurve(valLabels,score(:,2), 1, 'XCrit','fall', 'YCrit','sens');
+    figure;plot(X,Y);
+    
+    [X2,Y2,T,AUC2,OPTROCPT,SUBY] = perfcurve(valLabels,score(:,2), 1, 'XCrit','reca', 'YCrit','prec');
+    figure;plot(X2,Y2);
+    
+        result(:,i) =  [r(1:end); AUC; AUC2; f1_score];
 
-    
-    
     % visualize model
 %      view(Model_1.Trees{1},'Mode','graph')
 %      view(Model_1.Trees{1})
@@ -154,16 +154,15 @@ for i = 1:k
 end
 
 disp('avg');
-avg = mean(result_1,2);
-result_1 =  [result_1 avg];	
+avg = mean(result,2);
 disp(avg);
 
 
 
 %% save model
 
-save('/Users/qingdai/Desktop/fos_detection/model/model_RF(full).mat' , ...
-    'Model_1', 'Model_2', 'Model_3', 'Model_4', 'Model_5');
+save('/Users/qingdai/Desktop/fos_detection/model/RF200_min25_(Shape+texture+LBP+HOG)_+=-=4959' , ...
+    'Model');
 save('/Users/qingdai/Desktop/fos_detection/model/model_RF(5154_3000_<25).mat' , ...
     'Model_1', 'Model_2', 'Model_3', 'Model_4', 'Model_5');
 
@@ -200,8 +199,9 @@ for i = 1:length(test_image_path_vector)
     
     score = [score; s];
     [r, f1_score] = check_accuracy(Labels, pre);
+    r = [r;f1_score];
     result = [result r]; 
-    
+
     % total number of positive candidates predicted 
     num_of_predict(i) = length(find(pre));
     
@@ -214,9 +214,21 @@ end
 x = 1:10;
 figure;plot(x,num_of_predict, x, num_of_true );
 
+avg = mean(result, 2);
+
+
+
+
 [X,Y,T,AUC,OPTROCPT,SUBY] = perfcurve(test_Labels,score(:,2), 1);
 figure;plot(X,Y);
+xlabel('False positive rate')
+ylabel('True positive rate')
+
+[X2,Y2,T,AUC2,OPTROCPT,SUBY] = perfcurve(test_Labels,score(:,2), 1, 'XCrit','reca', 'YCrit','prec');
+figure;plot(X2,Y2);
+xlabel('Recall')
+ylabel('Precision')
 %% analyze
-cfos_mislabel = check_mislabeled(cfos_test_image_path, cfos_test_label_vector, RF_predict_labels);
+cfos_mislabel = check_mislabeled(test_image_path_vector{i}, Labels, pre);
 % % tdt_midlabel = check_mislabeled(tdt_test_image_path, tdt_test_label_vector, tdt_predict_label_L);
 
