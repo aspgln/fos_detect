@@ -1,9 +1,4 @@
-%%  import images and extract features
-
-Feature_vector = [];
-Label_vector = [];
-
-
+%% import all data
 
 % select multiple image and tag files
 [filename,pathname] = uigetfile('../data/DH/cfos/*.tif', ...
@@ -17,41 +12,81 @@ cfos_image_path_vector = strcat(pathname, filename(:));
     'Select image file', 'MultiSelect' , 'on');
 tag_path_vector = strcat(pathname, filename(:));
 
+%% 
+% randomly select 10 as test images
+m = length(cfos_image_path_vector);
 
-% extract patches from each image, extract labels
-l = length(filename);
+test_index = randsample(1:m, 10);
+
+test_image_path_vector = cfos_image_path_vector(test_index);
+test_tag_path_vector = tag_path_vector(test_index);
+train_image_path_vector = setdiff(cfos_image_path_vector,test_image_path_vector );
+train_image_tag_vector = setdiff(tag_path_vector,test_tag_path_vector );
+
+%% extract features and labels from training data
+    training_BW_patch_vector = [];
+    training_Gray2_patch_vector = [];  
+    training_Label_vector = [];      
+    training_Feature_vector = [];
+
+
 tic
-for i = 1: l
+for i = 1: length(train_image_tag_vector)
     % track time
-    remain_time = (toc / i) * (l-i);
+    remain_time = (toc / i) * (length(train_image_tag_vector)-i);
     
-    s = sprintf(' %d / %d \n time used: %.2f \n time remains %.2f \n', i,l, toc, remain_time);   
-    fprintf(s);   
+    % track elapsed time
+    s = sprintf(' %d / %d \n time used: %.2f \n time remains %.2f \n', i,length(train_image_tag_vector), toc, remain_time);     
+    fprintf(s);  
     
-     [Features, Labels] = extract_feature_and_import_tags...
-         (cfos_image_path_vector{i}, tag_path_vector{i}, 'cfos');
+%     % extract patches from each image
+%     [ Labels, training_BW_patch, ~, training_Gray2_patch]...                       
+%         = create_pixel_features(train_image_path_vector{i}, train_image_tag_vector{i}, 'cfos');
+   % extract features
+    [Features, Labels] = extract_feature_and_import_tags...
+       (train_image_path_vector{i}, train_image_tag_vector{i}, 'cfos');
     
     
     
-    Feature_vector = [Feature_vector; Features];
-    Label_vector = [Label_vector;  Labels];      
     
+%     BW_patch_vector = [BW_patch_vector   BW_patch];
+%     Gray2_patch_vector = [Gray2_patch_vector   Gray2_patch];  
+    training_Label_vector = [training_Label_vector;  Labels];      
+    training_Feature_vector = [training_Feature_vector; Features];
 end
+ 
+
+featureData = struct('Feature',Feature_vector, 'Label', Label_vector );
+
+%% save features
+save('/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG).mat' , ...
+    'featureData');
+
+%% load features
+feature_path = '/Users/qingdai/Desktop/fos_detection/data/featureData(Shape + Texture + LBP + HOG).mat';
+a = load(feature_path);
+a = a.featureData;
+
+training_Feature_vector = a.Feature;
+training_Label_vector = a.Label;
+
 
 
 %% set indices and cross validation
 
 
-m = length(Feature_vector);
+m = length(training_Feature_vector);
 
 % find the indices of all positive signals
-positive_index = find(Label_vector);
+positive_index = find(training_Label_vector);
 
 % find the indices of all negative signals
 negative_index = setdiff(1:m, positive_index);
 
 % randomly choose subsamples to balance data
-negInd = randsample(negative_index, length(positive_index));
+% negInd = randsample(negative_index, length(positive_index));
+ negInd = randsample(negative_index, length(positive_index));
+
 
 % combine and shuffle subsample
 total_index = [positive_index; negInd'];
@@ -63,7 +98,7 @@ cv = cvpartition(total_index, 'kfold', k);
 
 %% train and test 
 
-result = zeros(6,k);
+
 
 for i = 1:k
     
@@ -71,79 +106,116 @@ for i = 1:k
     
     % divide into two subsets
     trainInd = total_index(training(cv,i));
-    testInd  = total_index(test(cv,i));
+    valInd  = total_index(test(cv,i));
+
+    trainFeatures = training_Feature_vector(trainInd,:);
+    trainLabels = training_Label_vector(trainInd(1:end), :);
     
-    trainFeatures = Feature_vector(trainInd(1:end), :);
-    trainLabels = Label_vector(trainInd(1:end), :);
-    
-    testFeatures = Feature_vector(testInd(1:end), :);
-    testLabels = Label_vector(testInd(1:end), :);
+    valFeatures = training_Feature_vector(valInd(1:end), :);
+    valLabels = training_Label_vector(valInd(1:end), :);
     
     % train
     
     % random number generation
     rng(1);
     
-    B = TreeBagger(100,trainFeatures,trainLabels,'OOBPrediction',...
+    Model = TreeBagger(300,trainFeatures,trainLabels,'OOBPrediction',...
         'On', 'Method','classification');
-    
-%     view(B.Trees{1},'Mode','graph')
-%     view(B.Trees{1})
 
-%     figure;
-%     oobErrorBaggedEnsemble = oobError(B);
-%     plot(oobErrorBaggedEnsemble)
-%     xlabel 'Number of grown trees';
-%     ylabel 'Out-of-bag classification error';
+
 %     
     % predict
-    RF_predict_labels = predict(B,testFeatures);
-    RF_predict_labels = str2double(RF_predict_labels);
+    [predict_labels, score, stdevs] = predict(Model,valFeatures);
+    predict_labels = str2double(predict_labels);
     
-    % accuracy
-    tp = 0;
-    fp = 0;
-    fn = 0;
-    tn = 0;
-
-
-    for j = 1:length(RF_predict_labels)
-        if (testLabels(j) == 1) && (RF_predict_labels(j) == 1)
-            tp = tp + 1;
-        elseif (testLabels(j) == 1) && (RF_predict_labels(j) == 0)
-            fn = fn + 1;
-        elseif (testLabels(j) == 0) && (RF_predict_labels(j) == 1)
-            fp = fp + 1    ;
-        elseif (testLabels(j) == 0) && (RF_predict_labels(j) == 0)
-            tn = tn + 1;
-        end 
-
-    end
-
-    precision = tp / (tp + fp);
-
-    recall =  tp / (tp + fn);
-
-    accuracy = (tp + tn) / (tp + tn + fp + fn );
-
-
-    x = {'Random Forest', ''; 
-        'tp', tp; 'fp', fp; 'fn', fn;
-        'precision: ', precision; 'recall: ', recall; 'accuracy: ', accuracy};
+    % check accuracy
+    % r stores tp, fp, fn, precision, recall, accuracy, and print the
+    % console
+    [r, f1_score] = check_accuracy(valLabels, predict_labels);
     
-    r = cell2mat(x(2:7,2));
-    disp(r);
-    result(:, i) = r;			
+    % ROC curve
+    [X2,Y2,T,AUC,OPTROCPT,SUBY] = perfcurve(valLabels,score(:,2), 1);
+    plot(X1,Y1,X2, Y2);
+    result = [r(1:end); AUC; f1_score]
+
+    
+    
+    % visualize model
+%      view(Model_1.Trees{1},'Mode','graph')
+%      view(Model_1.Trees{1})
+
+%      figure;
+%      oobErrorBaggedEnsemble = oobError(Model);
+%      plot(oobErrorBaggedEnsemble)
+%      xlabel 'Number of grown trees';
+%      ylabel 'Out-of-bag classification error';
+%    	
+    	
 end
 
-disp('avg:');
-output = mean(result,2);
-disp(output);
+disp('avg');
+avg = mean(result_1,2);
+result_1 =  [result_1 avg];	
+disp(avg);
 
 
 
+%% save model
+
+save('/Users/qingdai/Desktop/fos_detection/model/model_RF(full).mat' , ...
+    'Model_1', 'Model_2', 'Model_3', 'Model_4', 'Model_5');
+save('/Users/qingdai/Desktop/fos_detection/model/model_RF(5154_3000_<25).mat' , ...
+    'Model_1', 'Model_2', 'Model_3', 'Model_4', 'Model_5');
 
 
+%% select model
+[filename,pathname] = uigetfile('../model/*.mat', ...
+   'Select model' );
+modelPath = [pathname, filename];
+a = load(modelPath);
+
+
+%% test model
+
+predict_model = Model;
+
+test_Features = [];
+test_Labels = [];
+predict_Labels = [];
+score = [];
+result = [];
+
+for i = 1:length(test_image_path_vector)
+   disp(i)
+   [Features, Labels] = extract_feature_and_import_tags...
+         (test_image_path_vector{i}, test_tag_path_vector{i}, 'cfos');
+         
+
+    test_Labels = [test_Labels; Labels];
+    
+    [pre, s] = predict(predict_model,Features);
+    pre = str2double(pre);
+    predict_Labels = [predict_Labels ;pre];
+   
+    
+    score = [score; s];
+    [r, f1_score] = check_accuracy(Labels, pre);
+    result = [result r]; 
+    
+    % total number of positive candidates predicted 
+    num_of_predict(i) = length(find(pre));
+    
+    % total number of true positive candidates
+    num_of_true(i) = length(find(Labels));
+    
+
+
+end
+x = 1:10;
+figure;plot(x,num_of_predict, x, num_of_true );
+
+[X,Y,T,AUC,OPTROCPT,SUBY] = perfcurve(test_Labels,score(:,2), 1);
+figure;plot(X,Y);
 %% analyze
 cfos_mislabel = check_mislabeled(cfos_test_image_path, cfos_test_label_vector, RF_predict_labels);
 % % tdt_midlabel = check_mislabeled(tdt_test_image_path, tdt_test_label_vector, tdt_predict_label_L);
