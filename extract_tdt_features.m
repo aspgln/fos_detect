@@ -1,18 +1,20 @@
-function [Feature_vector, Label_vector, num_of_candidates, L2] = extract_feature_and_import_tags(image_path, tag_path, target)
+function [Feature_vector, Label_vector, num_of_candidates, L2] = extract_tdt_features(image_path, tag_path, target)
+% image_path = cfos_test_image_path;
 I = imread(image_path);
 I_bw = mat2gray(I);
 
 [mask, Gray] = mexican_hat(I,80,4,2.5);
-%figure;imshow(I_bw);title('after mexican hat');
 
 
 
 %%
 % %histogram equilization
-I_equalized = adapthisteq(I_bw,'ClipLimit',.1);
+I_equalized = adapthisteq(I_bw,'clipLimit',0.02,'Distribution','exponential');
 % figure;
 % imshow(I_equalized);
 % title('adaptive histogram equalization')
+
+
 
 
 %%
@@ -24,7 +26,7 @@ Candidate_properties = regionprops(L,'Area', 'PixelIdxList', 'Centroid');
 
 candidate_centroid = [];
 for i = 1:n
-     if Candidate_properties(i).Area < 25             ||  Candidate_properties(i).Area > 400
+     if Candidate_properties(i).Area < 100           ||  Candidate_properties(i).Area > 1000
         L(Candidate_properties(i).PixelIdxList) = 0;
     else 
         candidate_centroid = [candidate_centroid; Candidate_properties(i).Centroid];
@@ -69,10 +71,13 @@ end
 %  % % 
 %       hold on
 %       plot(candidate_centroid(:,1), candidate_centroid(:,2), 'go')
- % %     
+%  %     
+
+
+
 %%
 %Recomputing the candidate patches after filtering out size
-patch_size = 80;
+patch_size = 60;
 for i=1:num_of_candidates
     % filter
     % set pixelidxlist of target candidate to 1, all the other to 0
@@ -83,14 +88,22 @@ for i=1:num_of_candidates
 
     
     BW_patch(i).image = create_patch(Base,x,y,patch_size);
-    Gray_patch(i).image = create_patch(I_equalized, x,y,patch_size);
+    
+    
+    Gray_patch(i).image = create_patch(I_bw, x,y,patch_size);
     %Normalizing the patches and reorienting so that it is vertical
 %     [Gray_Patch_normal(i).image, BW_patch_reorient(i).image] = process_reorient(Gray_patch(i).image, BW_patch(i).image);
     
+    
+
+
 %     figure;imshow(BW_patch_reorient(297).image);
 %     
+    
+    
+
 end
-  %%
+%%
 %Start extracting features
 %--------------------------------------------------------------------------
 
@@ -185,4 +198,5 @@ Label_vector = zeros(num_of_candidates,1);
 for i = 1:num_of_positive_signals
     Label_vector(positive_signals(i,1)) = 1;
 end
-      
+    
+    
